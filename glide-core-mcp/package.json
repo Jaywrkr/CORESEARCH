@@ -1,0 +1,23 @@
+{
+  "name": "glide-core-mcp",
+  "version": "1.0.0",
+  "description": "Servidor MCP local que conecta Claude con la tabla de proyectos de Coresolutions en Glide",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "glide-core-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test:glide": "node test-glide-connection.js"
+  },
+  "dependencies": {
+    "@glideapps/tables": "^1.0.21",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
