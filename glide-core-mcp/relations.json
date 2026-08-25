@@ -1,11 +1,21 @@
 {
   "_notas": [
     "Mapa de relaciones ENTRE TABLAS de la app de Glide, documentado a mano.",
-    "No se genera desde la API: se completa inspeccionando cada tabla con la tool",
-    "inspeccionar_tabla (o listar_tablas para conseguir el tableId) y anotando acá",
-    "qué columna de una tabla matchea por VALOR (no por relation-id de Glide) con",
-    "qué columna de otra tabla. Editar este archivo a mano cuando se documente una",
-    "tabla nueva; no hace falta tocar index.js ni glideClient.js para eso."
+    "No se genera desde la API: se completa inspeccionando cada tabla con",
+    "inspeccionar_tabla / obtener_filas (y listar_tablas para conseguir el",
+    "tableId) y anotando acá qué columna de una tabla matchea por VALOR (no",
+    "por relation-id de Glide) con qué columna de otra tabla.",
+    "",
+    "Cada tabla tiene 'columnasRemoto': mapea nombre LÓGICO -> id REAL de",
+    "columna (el 'id' que devuelve inspeccionar_tabla, o la key que aparece",
+    "en las filas crudas de obtener_filas). Mientras un campo esté en null,",
+    "las tools compuestas de index.js (obtener_proyecto_completo,",
+    "tickets_abiertos, etc.) NO van a inventar un valor: van a avisar",
+    "explícitamente qué falta completar acá antes de poder correr.",
+    "",
+    "Editar este archivo a mano cuando se documente una tabla nueva; no hace",
+    "falta tocar index.js ni glideClient.js para activar las tools que",
+    "dependen de ella — leen esta config en cada llamada."
   ],
   "tablas": {
     "proyectosPlanificacion": {
@@ -13,52 +23,117 @@
       "tableId": "native-table-IKrt1rYFBLyuLWD5Pa1B",
       "grupo": "Planificación de proyectos",
       "claveProyecto": "codigoProyecto",
-      "notas": "Tabla ya mapeada como projectsTable en glideClient.js (8 columnas expuestas)."
+      "notas": "Ya mapeada como projectsTable en glideClient.js (10 columnas: las 8 originales + fechaRevisado + liderProyecto). Las tools compuestas la usan directo desde ahí, no desde columnasRemoto."
     },
     "actividadesPlanificacion": {
       "nombreGlide": "Actividades Planificacion",
       "tableId": null,
       "grupo": "Planificación de proyectos",
-      "columnas": {
+      "columnasConocidas": {
         "Actividad": "texto",
         "Fecha": "fecha/hora",
         "Personal": "texto",
         "Nro Proyecto": "texto",
         "Horas": "número"
       },
+      "columnasRemoto": {
+        "actividad": null,
+        "fecha": null,
+        "personal": null,
+        "nroProyecto": null,
+        "horas": null
+      },
       "relaciones": [
         {
-          "campo": "Nro Proyecto",
+          "campo": "nroProyecto",
           "tipo": "match_por_valor",
           "conectaCon": "proyectosPlanificacion",
           "campoDestino": "codigoProyecto",
           "notas": "'Nro Proyecto' es texto libre, no un Relation nativo de Glide: se cruza comparando el valor de texto contra codigoProyecto."
         }
-      ]
+      ],
+      "usadaPor": ["obtener_proyecto_completo", "horas_por_proyecto", "horas_por_personal", "obtener_personal_resumen"],
+      "pendiente": "Falta tableId (correr listar_tablas) y confirmar columnasRemoto con obtener_filas."
+    },
+    "cronogramaPlanificacion": {
+      "nombreGlide": "Cronograma Planificacion",
+      "tableId": null,
+      "grupo": "Planificación de proyectos",
+      "columnasRemoto": { "nroProyecto": null },
+      "usadaPor": ["obtener_proyecto_completo"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "ticketsPlanificacion": {
+      "nombreGlide": "Tickets Planificacion",
+      "tableId": null,
+      "grupo": "Planificación de proyectos",
+      "columnasRemoto": { "nroProyecto": null, "cliente": null, "estatus": null, "fechaCreacion": null },
+      "usadaPor": ["obtener_proyecto_completo", "tickets_abiertos", "tickets_vencidos"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "equiposProyecto": {
+      "nombreGlide": "Equipos Proyecto",
+      "tableId": null,
+      "grupo": "Planificación de proyectos",
+      "columnasRemoto": { "nroProyecto": null },
+      "usadaPor": ["obtener_proyecto_completo"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "clientesPersonalPlanificacion": {
+      "nombreGlide": "Clientes Personal Planificacion",
+      "tableId": null,
+      "grupo": "Planificación de proyectos",
+      "columnasRemoto": { "cliente": null },
+      "usadaPor": ["obtener_cliente_resumen"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "clientesGeneral": {
+      "nombreGlide": "CLIENTES GENERAL",
+      "tableId": null,
+      "grupo": "Generales / catálogos",
+      "columnasRemoto": { "nombreCliente": null, "oportunidadesGanadas": null, "oportunidadesPerdidas": null, "oportunidadesDetectadas": null },
+      "usadaPor": ["obtener_cliente_resumen"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "capacitacionesPlanificacion": {
+      "nombreGlide": "Capacitaciones Planificacion",
+      "tableId": null,
+      "grupo": "Planificación de proyectos",
+      "columnasRemoto": { "personal": null, "expiracion": null, "certificacion": null },
+      "usadaPor": ["obtener_personal_resumen", "certificaciones_por_vencer"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "personalGeneral": {
+      "nombreGlide": "PERSONAL GENERAL",
+      "tableId": null,
+      "grupo": "Generales / catálogos",
+      "columnasRemoto": { "nombre": null, "rol": null, "certificacionesTecnologia": null },
+      "usadaPor": ["obtener_personal_resumen"],
+      "pendiente": "Falta inspeccionar por completo."
+    },
+    "proyectosGestion": {
+      "nombreGlide": "Proyectos Gestion",
+      "tableId": null,
+      "grupo": "Gestión",
+      "columnasRemoto": {},
+      "usadaPor": ["obtener_proyecto_completo (posible fuente alternativa)"],
+      "pendiente": "Columnas genéricas (column1, column2...) reportadas: usar obtener_filas para ver valores reales antes de mapear nada."
     }
   },
   "pendienteDeInspeccionar": [
     "Servicios Atencion Planificacion",
-    "Cronograma Planificacion",
-    "Tickets Planificacion",
-    "Equipos Proyecto",
-    "Capacitaciones Planificacion",
     "Estados Planificacion",
-    "Clientes Personal Planificacion",
     "Comentarios Planificacion",
     "Usuarios Planificacion",
     "Compras Publicas Planificacion",
     "Frases Planificación",
     "x - Clientes Planificacion",
     "x - Personal Planificacion",
-    "Proyectos Gestion",
     "HorasSoporte Gestion",
     "Servicios Gestion",
     "Comtrol de Ordenes de Compra Track",
     "Estados Track",
     "Companies Track",
-    "CLIENTES GENERAL",
-    "PERSONAL GENERAL",
     "Check Diario",
     "*HARDWARE",
     "*SOFTWARE",

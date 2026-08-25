@@ -6,6 +6,20 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { projectsTable, glideApp, rawTable } from "./glideClient.js";
+import {
+  obtenerFilas,
+  buscarFilas,
+  buscarTextoGlobal,
+  obtenerProyectoCompleto,
+  obtenerClienteResumen,
+  obtenerPersonalResumen,
+  horasPorProyecto,
+  horasPorPersonal,
+  ticketsAbiertos,
+  ticketsVencidos,
+  certificacionesPorVencer,
+  proyectosSinActualizar,
+} from "./crossQueries.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const relationsPath = join(__dirname, "relations.json");
@@ -175,6 +189,191 @@ server.registerTool(
       content: [{ type: "text", text: raw }],
     };
   }
+);
+
+function jsonResult(data) {
+  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+}
+
+server.registerTool(
+  "obtener_filas",
+  {
+    title: "Obtener filas crudas de una tabla de Glide",
+    description:
+      "Trae filas SIN transformar de cualquier tabla por su tableId, con paginación simple " +
+      "(offset/límite). Sirve para inspeccionar valores reales, sobre todo en tablas con columnas " +
+      "genéricas (column1, column2...) donde los nombres reales de campo no están claros en el " +
+      "schema y hay que verlos en los datos.",
+    inputSchema: {
+      tableId: z.string().describe("Id de la tabla (el 'id' que devuelve listar_tablas)."),
+      limite: z.number().int().positive().max(20).optional().describe("Default 5, máx 20."),
+      offset: z.number().int().nonnegative().optional().describe("Default 0."),
+    },
+  },
+  async ({ tableId, limite, offset }) => jsonResult(await obtenerFilas(tableId, limite ?? 5, offset ?? 0))
+);
+
+server.registerTool(
+  "buscar_filas",
+  {
+    title: "Buscar filas en cualquier tabla de Glide por columna",
+    description:
+      "Filtro genérico sobre cualquier tabla de Glide (no solo Proyectos): busca por substring, " +
+      "case-insensitive, en una columna dada. Reemplaza tener que escribir una tool dedicada por " +
+      "cada tabla nueva.",
+    inputSchema: {
+      tableId: z.string().describe("Id de la tabla a consultar."),
+      campo: z.string().describe("Nombre o id de la columna sobre la que filtrar."),
+      valor: z.string().describe("Substring a buscar, case-insensitive."),
+      limite: z.number().int().positive().max(50).optional().describe("Default 10, máx 50."),
+    },
+  },
+  async ({ tableId, campo, valor, limite }) => jsonResult(await buscarFilas(tableId, campo, valor, limite ?? 10))
+);
+
+server.registerTool(
+  "buscar_texto_global",
+  {
+    title: "Buscar texto en varias tablas de Glide a la vez",
+    description:
+      "Busca un término en todas las columnas de una o más tablas y devuelve coincidencias " +
+      "agrupadas por tabla. Si no se especifican tablas, busca en TODAS las tablas de la app (puede " +
+      "tardar). Útil cuando no se sabe en qué tabla está algo.",
+    inputSchema: {
+      texto: z.string().describe("Término a buscar, case-insensitive, por substring."),
+      tablas: z
+        .array(z.string())
+        .optional()
+        .describe("Ids de tabla donde buscar. Si se omite, busca en todas las tablas de la app."),
+      limite_por_tabla: z.number().int().positive().max(20).optional().describe("Default 5."),
+    },
+  },
+  async ({ texto, tablas, limite_por_tabla }) =>
+    jsonResult(await buscarTextoGlobal(texto, tablas, limite_por_tabla ?? 5))
+);
+
+server.registerTool(
+  "obtener_proyecto_completo",
+  {
+    title: "Obtener toda la info de un proyecto cruzando tablas",
+    description:
+      "Trae en un solo llamado todo lo relacionado a un proyecto: datos base (Proyectos " +
+      "Planificacion), actividades, cronograma, tickets y equipos asignados, cruzando por " +
+      "'Nro Proyecto'/codigoProyecto. Las secciones cuya tabla todavía no está mapeada en " +
+      "relations.json vienen marcadas como no disponibles, con instrucciones de qué completar.",
+    inputSchema: {
+      nro_proyecto: z.string().describe("Código del proyecto a buscar (ej. codigoProyecto)."),
+    },
+  },
+  async ({ nro_proyecto }) => jsonResult(await obtenerProyectoCompleto(nro_proyecto))
+);
+
+server.registerTool(
+  "obtener_cliente_resumen",
+  {
+    title: "Obtener resumen de un cliente",
+    description:
+      "Trae los proyectos de un cliente (en curso/terminados), sus contactos asociados y sus " +
+      "contadores de oportunidades (ganadas/perdidas/detectadas), cruzando tablas por nombre de " +
+      "cliente.",
+    inputSchema: {
+      cliente: z.string().describe("Nombre o substring del cliente a buscar."),
+    },
+  },
+  async ({ cliente }) => jsonResult(await obtenerClienteResumen(cliente))
+);
+
+server.registerTool(
+  "obtener_personal_resumen",
+  {
+    title: "Obtener resumen de una persona del equipo",
+    description:
+      "Trae certificaciones/expiraciones, horas registradas recientes y datos base (rol, " +
+      "certificaciones por tecnología) de una persona, cruzando tablas por nombre.",
+    inputSchema: {
+      nombre: z.string().describe("Nombre o substring de la persona a buscar."),
+    },
+  },
+  async ({ nombre }) => jsonResult(await obtenerPersonalResumen(nombre))
+);
+
+server.registerTool(
+  "horas_por_proyecto",
+  {
+    title: "Sumar horas registradas por proyecto",
+    description: "Suma las horas de Actividades Planificacion filtradas por proyecto y rango de fechas opcional.",
+    inputSchema: {
+      nro_proyecto: z.string().describe("Código del proyecto."),
+      desde: z.string().optional().describe("Fecha ISO desde (inclusive), opcional."),
+      hasta: z.string().optional().describe("Fecha ISO hasta (inclusive), opcional."),
+    },
+  },
+  async ({ nro_proyecto, desde, hasta }) => jsonResult(await horasPorProyecto(nro_proyecto, desde, hasta))
+);
+
+server.registerTool(
+  "horas_por_personal",
+  {
+    title: "Sumar horas registradas por persona",
+    description: "Suma las horas de Actividades Planificacion filtradas por persona y rango de fechas opcional.",
+    inputSchema: {
+      nombre: z.string().describe("Nombre de la persona."),
+      desde: z.string().optional().describe("Fecha ISO desde (inclusive), opcional."),
+      hasta: z.string().optional().describe("Fecha ISO hasta (inclusive), opcional."),
+    },
+  },
+  async ({ nombre, desde, hasta }) => jsonResult(await horasPorPersonal(nombre, desde, hasta))
+);
+
+server.registerTool(
+  "tickets_abiertos",
+  {
+    title: "Listar tickets abiertos",
+    description: "Filtra Tickets Planificacion por estatus distinto de cerrado/finalizado, opcionalmente por cliente.",
+    inputSchema: {
+      cliente: z.string().optional().describe("Filtrar además por cliente, opcional."),
+    },
+  },
+  async ({ cliente }) => jsonResult(await ticketsAbiertos(cliente))
+);
+
+server.registerTool(
+  "tickets_vencidos",
+  {
+    title: "Listar tickets vencidos",
+    description: "Tickets abiertos cuya fecha de creación supera N días sin resolución.",
+    inputSchema: {
+      dias: z.number().int().positive().optional().describe("Default 7."),
+    },
+  },
+  async ({ dias }) => jsonResult(await ticketsVencidos(dias ?? 7))
+);
+
+server.registerTool(
+  "certificaciones_por_vencer",
+  {
+    title: "Listar certificaciones por vencer",
+    description: "Filtra Capacitaciones Planificacion cuya fecha de expiración cae dentro de los próximos N días.",
+    inputSchema: {
+      dias: z.number().int().positive().optional().describe("Default 30."),
+    },
+  },
+  async ({ dias }) => jsonResult(await certificacionesPorVencer(dias ?? 30))
+);
+
+server.registerTool(
+  "proyectos_sin_actualizar",
+  {
+    title: "Listar proyectos sin revisar recientemente",
+    description:
+      "Proyectos de Proyectos Planificacion cuya fecha de revisión está más atrás que N días, o " +
+      "vacía — para detectar seguimiento descuidado. Esta tool funciona sin configuración adicional " +
+      "en relations.json.",
+    inputSchema: {
+      dias: z.number().int().positive().optional().describe("Default 15."),
+    },
+  },
+  async ({ dias }) => jsonResult(await proyectosSinActualizar(dias ?? 15))
 );
 
 async function main() {

@@ -34,6 +34,8 @@ export const projectsTable = glide.table({
     fechaFinalizacion: { type: "date-time", name: "remotecolumn5" },
     satisfaccion: { type: "number", name: "remotecolumn6" },
     estado: { type: "string", name: "remoteCódigo:FO-ST-02" },
+    fechaRevisado: { type: "date-time", name: "SowWf" },
+    liderProyecto: { type: "string", name: "Jv4eD" },
   },
 });
 

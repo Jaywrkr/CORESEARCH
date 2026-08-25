@@ -181,16 +181,59 @@ Cómo se completa `relations.json` a medida que se van documentando más tablas:
 
 No hace falta tocar `index.js` ni `glideClient.js` para esto — es solo editar el
 JSON. El archivo ya trae precargada la tabla `proyectosPlanificacion` (la que usa
-`buscar_proyectos`) y un ejemplo real (`actividadesPlanificacion` → `Nro Proyecto`),
-más la lista de las 27 tablas restantes de la app pendientes de documentar.
+`buscar_proyectos`) y varias tablas más con su estructura esperada pero `tableId`
+en `null`, pendientes de completar (ver siguiente sección).
+
+## Tools genéricas (sin configuración previa)
+
+Estas funcionan sobre cualquier tabla, con solo pasarle su `tableId` (el que
+devuelve `listar_tablas`):
+
+- **`obtener_filas`** — `tableId`, `limite` (default 5, máx 20), `offset` (default
+  0). Filas crudas sin transformar, con paginación simple. Sirve para ver valores
+  reales en tablas con columnas genéricas (`column1`, `column2`...) antes de
+  mapearlas.
+- **`buscar_filas`** — `tableId`, `campo`, `valor`, `limite` (default 10, máx 50).
+  Filtro por substring case-insensitive sobre cualquier columna de cualquier tabla.
+- **`buscar_texto_global`** — `texto`, `tablas` (array de ids, opcional — si se
+  omite busca en las 29 tablas de la app), `limite_por_tabla` (default 5). Busca un
+  término en varias tablas a la vez, agrupado por tabla. Útil cuando no se sabe
+  dónde está algo.
+
+## Tools compuestas (dependen de `relations.json`)
+
+Estas cruzan datos entre varias tablas. Cada una valida primero que las tablas que
+necesita tengan `tableId` y las `columnasRemoto` correspondientes completas en
+`relations.json` — si falta algo, devuelven un mensaje explicando exactamente qué
+completar (nunca inventan un mapeo a ciegas):
+
+- **`obtener_proyecto_completo`** — `nro_proyecto`. Trae el proyecto (ya
+  funcional) + actividades, cronograma, tickets y equipos asignados (pendientes de
+  mapear en `relations.json`) + horas totales.
+- **`obtener_cliente_resumen`** — `cliente`. Proyectos del cliente (ya funcional) +
+  contactos asociados y contadores de oportunidades (pendientes de mapear).
+- **`obtener_personal_resumen`** — `nombre`. Certificaciones, actividades
+  recientes y datos base de una persona (todo pendiente de mapear).
+- **`horas_por_proyecto`** / **`horas_por_personal`** — suma de horas desde
+  Actividades Planificacion, con `desde`/`hasta` opcionales (pendiente de mapear).
+- **`tickets_abiertos`** / **`tickets_vencidos`** — sobre Tickets Planificacion
+  (pendiente de mapear).
+- **`certificaciones_por_vencer`** — `dias` (default 30), sobre Capacitaciones
+  Planificacion (pendiente de mapear).
+- **`proyectos_sin_actualizar`** — `dias` (default 15). **Ya 100% funcional**, solo
+  depende de `Proyectos Planificacion` (usa `fechaRevisado`, ya mapeada).
+
+Para activar las que dicen "pendiente de mapear": llamar `obtener_filas` sobre la
+tabla en cuestión para ver los nombres reales de columna, y completar
+`tablas.<clave>.tableId` y `tablas.<clave>.columnasRemoto` en `relations.json` —
+apenas se completa, la tool empieza a funcionar sin tocar código.
 
 ## Próximos pasos (no incluidos ahora)
 
-- Terminar de documentar en `relations.json` las tablas que faltan (ver
-  `pendienteDeInspeccionar` dentro del archivo).
+- Terminar de mapear en `relations.json` las tablas que necesitan las tools
+  compuestas (actividades, cronograma, tickets, equipos, clientes, personal,
+  capacitaciones — ver `pendiente` en cada entrada de `tablas`).
 - Deploy remoto (Railway, Render o Fly.io) para no depender de tu máquina local ni
   poder usarlo desde el celular.
-- Tools que efectivamente crucen datos entre tablas usando `relations.json` (ej.
-  traer un proyecto junto con sus actividades).
 - Tools de escritura (crear/actualizar proyectos).
 - Autenticación OAuth.
