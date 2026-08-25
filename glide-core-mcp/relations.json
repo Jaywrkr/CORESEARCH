@@ -1,0 +1,69 @@
+{
+  "_notas": [
+    "Mapa de relaciones ENTRE TABLAS de la app de Glide, documentado a mano.",
+    "No se genera desde la API: se completa inspeccionando cada tabla con la tool",
+    "inspeccionar_tabla (o listar_tablas para conseguir el tableId) y anotando acá",
+    "qué columna de una tabla matchea por VALOR (no por relation-id de Glide) con",
+    "qué columna de otra tabla. Editar este archivo a mano cuando se documente una",
+    "tabla nueva; no hace falta tocar index.js ni glideClient.js para eso."
+  ],
+  "tablas": {
+    "proyectosPlanificacion": {
+      "nombreGlide": "Proyectos Planificacion",
+      "tableId": "native-table-IKrt1rYFBLyuLWD5Pa1B",
+      "grupo": "Planificación de proyectos",
+      "claveProyecto": "codigoProyecto",
+      "notas": "Tabla ya mapeada como projectsTable en glideClient.js (8 columnas expuestas)."
+    },
+    "actividadesPlanificacion": {
+      "nombreGlide": "Actividades Planificacion",
+      "tableId": null,
+      "grupo": "Planificación de proyectos",
+      "columnas": {
+        "Actividad": "texto",
+        "Fecha": "fecha/hora",
+        "Personal": "texto",
+        "Nro Proyecto": "texto",
+        "Horas": "número"
+      },
+      "relaciones": [
+        {
+          "campo": "Nro Proyecto",
+          "tipo": "match_por_valor",
+          "conectaCon": "proyectosPlanificacion",
+          "campoDestino": "codigoProyecto",
+          "notas": "'Nro Proyecto' es texto libre, no un Relation nativo de Glide: se cruza comparando el valor de texto contra codigoProyecto."
+        }
+      ]
+    }
+  },
+  "pendienteDeInspeccionar": [
+    "Servicios Atencion Planificacion",
+    "Cronograma Planificacion",
+    "Tickets Planificacion",
+    "Equipos Proyecto",
+    "Capacitaciones Planificacion",
+    "Estados Planificacion",
+    "Clientes Personal Planificacion",
+    "Comentarios Planificacion",
+    "Usuarios Planificacion",
+    "Compras Publicas Planificacion",
+    "Frases Planificación",
+    "x - Clientes Planificacion",
+    "x - Personal Planificacion",
+    "Proyectos Gestion",
+    "HorasSoporte Gestion",
+    "Servicios Gestion",
+    "Comtrol de Ordenes de Compra Track",
+    "Estados Track",
+    "Companies Track",
+    "CLIENTES GENERAL",
+    "PERSONAL GENERAL",
+    "Check Diario",
+    "*HARDWARE",
+    "*SOFTWARE",
+    "*ESTADOS",
+    "Workflow Run Log",
+    "Workflow Step Log"
+  ]
+}

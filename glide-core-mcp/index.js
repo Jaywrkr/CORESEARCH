@@ -1,8 +1,14 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { projectsTable, glideApp, rawTable } from "./glideClient.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const relationsPath = join(__dirname, "relations.json");
 
 const server = new McpServer({
   name: "glide-core-mcp",
@@ -147,6 +153,26 @@ server.registerTool(
 
     return {
       content: [{ type: "text", text: JSON.stringify(schema, null, 2) }],
+    };
+  }
+);
+
+server.registerTool(
+  "obtener_mapa_relaciones",
+  {
+    title: "Obtener mapa de relaciones entre tablas de Glide",
+    description:
+      "Devuelve el mapa de relaciones entre tablas documentado a mano en relations.json: qué " +
+      "columna de cada tabla conecta (por valor, no por relation-id de Glide) con qué columna de " +
+      "qué otra tabla. Llamar esta tool al inicio de cualquier tarea que cruce datos entre tablas, " +
+      "para no depender de inspeccionar_tabla cada vez ni de adivinar. Es lectura local instantánea, " +
+      "no pega a la API de Glide.",
+    inputSchema: {},
+  },
+  async () => {
+    const raw = readFileSync(relationsPath, "utf-8");
+    return {
+      content: [{ type: "text", text: raw }],
     };
   }
 );

@@ -156,11 +156,41 @@ Uso típico: preguntale a Claude "listá las tablas de mi app de Glide" y despu�
 tools nuevas que crucen datos entre tablas (ej. proyecto + cliente relacionado),
 mapeando las columnas correspondientes en `glideClient.js`.
 
+## Mapa de relaciones (`relations.json`)
+
+En la práctica, las tablas de esta app de Glide no se cruzan con columnas nativas de
+tipo Relation, sino comparando el **valor de texto** de una columna contra otra (ej.
+`Nro Proyecto` en "Actividades Planificacion" contra `codigoProyecto` en "Proyectos
+Planificacion"). Documentar esto de nuevo cada vez que se necesita cruzar datos es
+lento, así que queda fijado a mano en **`relations.json`**, en la raíz del proyecto.
+
+- **`obtener_mapa_relaciones`** (tool, sin parámetros): devuelve el contenido de
+  `relations.json` tal cual. Es lectura local instantánea — no llama a la API de
+  Glide. Pedile a Claude que la llame al arrancar cualquier tarea que cruce tablas,
+  así no tiene que adivinar ni volver a inspeccionar cada vez.
+
+Cómo se completa `relations.json` a medida que se van documentando más tablas:
+
+1. Llamar `listar_tablas` para conseguir el `tableId` real de la tabla a documentar.
+2. Llamar `inspeccionar_tabla` con ese id para ver sus columnas y tipos.
+3. Agregar (o completar) la entrada de esa tabla en `relations.json`: su `tableId`,
+   sus columnas relevantes, y en `relaciones` qué columna conecta con qué tabla y
+   columna destino (usando las claves ya definidas en `tablas`, ej.
+   `"proyectosPlanificacion"`).
+4. Sacarla de la lista `pendienteDeInspeccionar` una vez documentada.
+
+No hace falta tocar `index.js` ni `glideClient.js` para esto — es solo editar el
+JSON. El archivo ya trae precargada la tabla `proyectosPlanificacion` (la que usa
+`buscar_proyectos`) y un ejemplo real (`actividadesPlanificacion` → `Nro Proyecto`),
+más la lista de las 27 tablas restantes de la app pendientes de documentar.
+
 ## Próximos pasos (no incluidos ahora)
 
+- Terminar de documentar en `relations.json` las tablas que faltan (ver
+  `pendienteDeInspeccionar` dentro del archivo).
 - Deploy remoto (Railway, Render o Fly.io) para no depender de tu máquina local ni
   poder usarlo desde el celular.
-- Tools que crucen relaciones específicas entre tablas (una vez que se explore con
-  `listar_tablas` / `inspeccionar_tabla` qué relaciones existen).
+- Tools que efectivamente crucen datos entre tablas usando `relations.json` (ej.
+  traer un proyecto junto con sus actividades).
 - Tools de escritura (crear/actualizar proyectos).
 - Autenticación OAuth.
