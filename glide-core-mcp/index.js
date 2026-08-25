@@ -21,8 +21,10 @@ server.registerTool(
         .string()
         .optional()
         .describe(
-          "Filtro de texto sobre el campo 'gestion' (servicio/tecnología), case-insensitive, por " +
-            "substring. Ej: 'vmware' matchea 'VMware' y 'VMware vSAN'."
+          "Filtro de texto por substring, case-insensitive, sobre el servicio/tecnología. Busca " +
+            "tanto en el campo 'gestion' como en el nombre/cliente del proyecto (donde suele " +
+            "aparecer la tecnología, ej. 'MUTUALISTA PICHINCHA - SERVICIOS VMWARE'). Ej: 'vmware' " +
+            "matchea 'VMware' y 'VMware vSAN'."
         ),
       estado: z
         .string()
@@ -46,9 +48,11 @@ server.registerTool(
 
     if (servicio) {
       const needle = servicio.toLowerCase();
-      filtered = filtered.filter((row) =>
-        (row.gestion ?? "").toLowerCase().includes(needle)
-      );
+      filtered = filtered.filter((row) => {
+        const gestion = (row.gestion ?? "").toLowerCase();
+        const cliente = (row.clienteProyecto ?? "").toLowerCase();
+        return gestion.includes(needle) || cliente.includes(needle);
+      });
     }
 
     if (estado) {
