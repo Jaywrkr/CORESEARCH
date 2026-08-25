@@ -2,7 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { projectsTable } from "./glideClient.js";
+import { projectsTable, glideApp, rawTable } from "./glideClient.js";
 
 const server = new McpServer({
   name: "glide-core-mcp",
@@ -92,6 +92,61 @@ server.registerTool(
           ),
         },
       ],
+    };
+  }
+);
+
+server.registerTool(
+  "listar_tablas",
+  {
+    title: "Listar tablas de la app de Glide",
+    description:
+      "Lista todas las tablas de la app de Glide configurada (id y nombre), para descubrir qué " +
+      "tablas existen antes de inspeccionarlas o de armar consultas que crucen varias tablas.",
+    inputSchema: {},
+  },
+  async () => {
+    const tables = await glideApp.getTables();
+
+    if (!tables) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "No se pudo obtener la lista de tablas (revisá GLIDE_APP_ID y GLIDE_TOKEN).",
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const resumen = tables.map((t) => ({ id: t.id, nombre: t.name }));
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(resumen, null, 2) }],
+    };
+  }
+);
+
+server.registerTool(
+  "inspeccionar_tabla",
+  {
+    title: "Inspeccionar columnas de una tabla de Glide",
+    description:
+      "Dado el id de una tabla de Glide (obtenido con listar_tablas), devuelve sus columnas: id " +
+      "remoto, nombre visible y tipo. Sirve para identificar qué columnas son relaciones, lookups " +
+      "o rollups antes de mapearlas en el código.",
+    inputSchema: {
+      tableId: z
+        .string()
+        .describe("Id de la tabla de Glide a inspeccionar (el 'id' que devuelve listar_tablas)."),
+    },
+  },
+  async ({ tableId }) => {
+    const schema = await rawTable(tableId).getSchema();
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(schema, null, 2) }],
     };
   }
 );

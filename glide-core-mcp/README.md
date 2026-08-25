@@ -126,17 +126,41 @@ Notas:
 
 ## La tool `buscar_proyectos`
 
-- **servicio** (string, opcional): filtro por substring, case-insensitive, sobre el
-  campo `gestion`. Ej: `"vmware"` matchea `"VMware"` y `"VMware vSAN"`.
+- **servicio** (string, opcional): filtro por substring, case-insensitive. Busca
+  tanto en `gestion` como en `clienteProyecto` (la tecnología suele aparecer en el
+  nombre del proyecto, ej. `"MUTUALISTA PICHINCHA - SERVICIOS VMWARE"`).
 - **estado** (string, opcional): filtro exacto, case-insensitive, sobre `estado`.
 - **limite** (number, opcional, default 10, máx 50): cantidad de resultados.
 
 Devuelve un JSON con los proyectos ordenados por `fechaCreacion` descendente,
 incluyendo: `codigo`, `cliente`, `servicio`, `estado`, `fechaCreacion`,
-`fechaPlanificada`, `fechaFinalizacion`, `satisfaccion`.
+`fechaPlanificada`, `fechaFinalizacion`, `satisfaccion`. Internamente trae **todas**
+las filas de la tabla (la librería pagina sola), así que el orden/filtro se aplica
+sobre el universo completo, no solo sobre las últimas N filas.
+
+## Explorar tablas y relaciones de la app de Glide
+
+La API de Glide no trae relaciones "resueltas" automáticamente — cada tabla se lee
+por separado. Para descubrir qué otras tablas existen en tu app y cómo están
+armadas sus columnas (incluyendo relaciones, lookups y rollups) sin abrir el modal
+"Show API" a mano, hay dos tools de solo lectura:
+
+- **`listar_tablas`**: sin parámetros. Devuelve `[{ id, nombre }, ...]` de todas las
+  tablas de la app.
+- **`inspeccionar_tabla`**: recibe `tableId` (el `id` que devuelve `listar_tablas`).
+  Devuelve las columnas de esa tabla con su `id` remoto, `name` visible y `type.kind`
+  — así se identifica qué columnas son relaciones, lookups o rollups.
+
+Uso típico: preguntale a Claude "listá las tablas de mi app de Glide" y después
+"inspeccioná la tabla X" para ver sus columnas. Con esa info se pueden diseñar
+tools nuevas que crucen datos entre tablas (ej. proyecto + cliente relacionado),
+mapeando las columnas correspondientes en `glideClient.js`.
 
 ## Próximos pasos (no incluidos ahora)
 
-- Deploy remoto (Railway, Render o Fly.io) para no depender de tu máquina local.
-- Tools adicionales (crear/actualizar proyectos, otras tablas, etc.).
+- Deploy remoto (Railway, Render o Fly.io) para no depender de tu máquina local ni
+  poder usarlo desde el celular.
+- Tools que crucen relaciones específicas entre tablas (una vez que se explore con
+  `listar_tablas` / `inspeccionar_tabla` qué relaciones existen).
+- Tools de escritura (crear/actualizar proyectos).
 - Autenticación OAuth.

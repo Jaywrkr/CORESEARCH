@@ -36,3 +36,12 @@ export const projectsTable = glide.table({
     estado: { type: "string", name: "remoteCódigo:FO-ST-02" },
   },
 });
+
+// App de Glide, usada para explorar tablas y columnas (listar_tablas /
+// inspeccionar_tabla) sin tener que abrir el modal "Show API" a mano.
+export const glideApp = glide.app({ id: GLIDE_APP_ID, token: GLIDE_TOKEN });
+
+// Crea un Table "crudo" (sin mapeo de columnas) solo para leer su schema.
+export function rawTable(tableId) {
+  return glide.table({ token: GLIDE_TOKEN, app: GLIDE_APP_ID, table: tableId, columns: {} });
+}
