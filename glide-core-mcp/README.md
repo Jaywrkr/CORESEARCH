@@ -1,10 +1,17 @@
 # glide-core-mcp
 
-Servidor MCP local (stdio) que conecta Claude Desktop con la tabla de proyectos de
-Coresolutions en Glide, usando la API oficial de Glide (`@glideapps/tables`).
+Servidor MCP que conecta Claude con la tabla de proyectos de Coresolutions en Glide,
+usando la API oficial de Glide (`@glideapps/tables`). Corre en dos modos, mismo
+código de tools (`tools.js`), dos entrypoints distintos:
 
-No hay deploy remoto. Este servidor corre en tu máquina y Claude Desktop lo lanza
-como subproceso vía stdio.
+- **`index.js`** — modo local, transporte stdio. Claude Desktop lo lanza como
+  subproceso en tu máquina (`node index.js`). Sin esto expuesto a internet.
+- **`server-http.js`** — modo remoto, transporte HTTP (`POST /mcp`), pensado para
+  desplegar en Railway y conectarlo como conector remoto desde cualquier
+  dispositivo (celular incluido), no solo desde la PC donde corre.
+
+Los dos leen las mismas credenciales de Glide y comparten las 17 tools definidas en
+`tools.js` — no hay lógica duplicada entre modos.
 
 ## ⚠️ Seguridad del token de Glide
 
@@ -241,6 +248,84 @@ Todas estas ya deberían estar activas con los datos reales cargados en
 `relations.json` — si alguna responde "disponible: false", el mensaje indica
 exactamente qué falta completar.
 
+## Deploy remoto en Railway
+
+El servidor remoto (`server-http.js`) expone las mismas 17 tools por HTTP en
+`POST /mcp`, protegidas con un token propio (`MCP_SERVER_TOKEN`, distinto del
+`GLIDE_TOKEN`) porque una vez desplegado queda con una URL pública.
+
+### 1. Generar tu `MCP_SERVER_TOKEN`
+
+En cualquier terminal (Mac/Linux/WSL) o en Git Bash en Windows:
+
+```bash
+openssl rand -hex 32
+```
+
+Guardá ese valor — es distinto del token de Glide, es propio de este servidor.
+
+### 2. Crear el proyecto en Railway
+
+1. Andá a [railway.app](https://railway.app) y creá una cuenta (podés entrar con
+   GitHub directo).
+2. **New Project → Deploy from GitHub repo** y elegí el repo `jaywrkr/coresearch`.
+3. Railway va a intentar buildear desde la raíz del repo. Como `glide-core-mcp` es
+   una subcarpeta, andá a **Settings** del servicio y configurá:
+   - **Root Directory**: `glide-core-mcp`
+   - **Start Command**: dejalo vacío (usa `npm start`, que ya corre
+     `node server-http.js`) — o poné `node server-http.js` explícito si preferís.
+
+### 3. Configurar variables de entorno en Railway
+
+En **Variables** del servicio, agregá:
+
+```
+GLIDE_TOKEN=tu_token_de_glide
+GLIDE_APP_ID=NAoV5Ey6TX6LpH7KAmXs
+GLIDE_TABLE_ID=native-table-IKrt1rYFBLyuLWD5Pa1B
+MCP_SERVER_TOKEN=el_token_que_generaste_en_el_paso_1
+```
+
+No hace falta setear `PORT` — Railway lo inyecta solo y `server-http.js` ya lo lee
+de `process.env.PORT`.
+
+### 4. Deploy y obtener la URL pública
+
+Railway hace deploy automático al guardar las variables (y en cada push a la rama
+conectada). Una vez que el deploy termina en verde, andá a **Settings → Networking**
+y generá un dominio público (**Generate Domain**) si no se generó solo. Vas a tener
+algo como `https://glide-core-mcp-production.up.railway.app`.
+
+Probá que responde:
+
+```bash
+curl https://TU-DOMINIO.up.railway.app/
+# {"status":"ok","server":"glide-core-mcp"}
+```
+
+### 5. Conectarlo como conector remoto en Claude
+
+En Claude Desktop (o donde soporte conectores remotos MCP), agregá un conector
+remoto nuevo apuntando a:
+
+- **URL**: `https://TU-DOMINIO.up.railway.app/mcp`
+- **Autenticación**: header `Authorization: Bearer <MCP_SERVER_TOKEN>` (el mismo
+  valor que configuraste en Railway)
+
+A diferencia del modo local, este sí funciona desde el celular o cualquier
+dispositivo con la cuenta de Claude conectada, no solo desde la PC donde corre.
+
+### Notas sobre el modo HTTP
+
+- Corre **stateless**: cada request crea una instancia nueva del servidor MCP, sin
+  guardar sesión entre llamadas. Es la forma más simple de operar en Railway (nada
+  de estado en memoria que se pierda en un restart), a costa de no soportar streams
+  largos entre requests separados — no debería notarse para las 17 tools actuales,
+  que son todas de solo lectura y responden en un solo request/response.
+- El token de Glide (`GLIDE_TOKEN`) sigue sin ir nunca en el código ni en el repo —
+  vive únicamente en las variables de entorno de Railway, igual que en local vive
+  solo en `.env`.
+
 ## Próximos pasos (no incluidos ahora)
 
 - Confirmar los dos `tableId` sospechosos (`clientes_general`, `personal_general`,
@@ -249,7 +334,6 @@ exactamente qué falta completar.
   Servicios Gestion, relación de Compras Publicas Planificacion, y confirmar si
   "x - Clientes/Personal Planificacion" son vistas duplicadas de las tablas
   generales).
-- Deploy remoto (Railway, Render o Fly.io) para no depender de tu máquina local ni
-  poder usarlo desde el celular.
 - Tools de escritura (crear/actualizar proyectos).
-- Autenticación OAuth.
+- Autenticación OAuth (el `MCP_SERVER_TOKEN` actual es un secreto compartido
+  simple, no OAuth).
