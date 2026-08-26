@@ -498,3 +498,31 @@ export async function proyectosSinActualizar(dias = 15, estado) {
     })),
   };
 }
+
+// -----------------------------------------------------------------------
+// 13: detectar_codigos_duplicados
+// -----------------------------------------------------------------------
+
+export async function detectarCodigosDuplicados() {
+  const proyectos = await projectsTable.get();
+  const porCodigo = new Map();
+
+  for (const p of proyectos) {
+    if (esFilaBasura(p)) continue;
+    const codigo = p.codigoProyecto.trim();
+    const key = codigo.toLowerCase();
+    if (!porCodigo.has(key)) porCodigo.set(key, []);
+    porCodigo.get(key).push({
+      codigo,
+      cliente: p.clienteProyecto,
+      estado: p.estado,
+      fechaCreacion: p.fechaCreacion,
+    });
+  }
+
+  const duplicados = [...porCodigo.values()]
+    .filter((filas) => filas.length > 1)
+    .map((filas) => ({ codigo: filas[0].codigo, ocurrencias: filas.length, filas }));
+
+  return { totalCodigosDuplicados: duplicados.length, duplicados };
+}

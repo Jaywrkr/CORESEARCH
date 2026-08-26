@@ -19,6 +19,7 @@ import {
   ticketsVencidos,
   certificacionesPorVencer,
   proyectosSinActualizar,
+  detectarCodigosDuplicados,
   esFilaBasura,
 } from "./crossQueries.js";
 
@@ -381,6 +382,20 @@ server.registerTool(
     },
   },
   async ({ dias, estado }) => jsonResult(await proyectosSinActualizar(dias ?? 15, estado))
+);
+
+server.registerTool(
+  "detectar_codigos_duplicados",
+  {
+    title: "Detectar códigos de proyecto duplicados",
+    description:
+      "Agrupa Proyectos Planificacion por codigoProyecto (case-insensitive) y devuelve los códigos " +
+      "que aparecen más de una vez, con el cliente y estado de cada ocurrencia. Sirve para detectar " +
+      "reuso accidental de un mismo código en proyectos distintos. No modifica nada en Glide, solo " +
+      "reporta.",
+    inputSchema: {},
+  },
+  async () => jsonResult(await detectarCodigosDuplicados())
 );
 
 async function main() {

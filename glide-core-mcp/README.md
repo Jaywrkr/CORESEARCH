@@ -230,8 +230,12 @@ algo, devuelven un mensaje explicando exactamente qué completar:
 - **`tickets_abiertos`** / **`tickets_vencidos`** — sobre Tickets Planificacion.
 - **`certificaciones_por_vencer`** — `dias` (default 30), sobre Capacitaciones
   Planificacion.
-- **`proyectos_sin_actualizar`** — `dias` (default 15). Solo depende de
+- **`proyectos_sin_actualizar`** — `dias` (default 15), `estado` (opcional, ej.
+  `"En Curso"`, para no tener que revisar a mano los "Terminado"). Solo depende de
   `Proyectos Planificacion` (usa `fechaRevisado`, ya mapeada).
+- **`detectar_codigos_duplicados`** — sin parámetros. Agrupa proyectos por
+  `codigoProyecto` y devuelve los que aparecen más de una vez (con cliente y
+  estado de cada ocurrencia), para pescar reuso accidental de un mismo código.
 
 Todas estas ya deberían estar activas con los datos reales cargados en
 `relations.json` — si alguna responde "disponible: false", el mensaje indica
