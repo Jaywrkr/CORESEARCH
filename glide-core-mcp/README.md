@@ -160,29 +160,39 @@ mapeando las columnas correspondientes en `glideClient.js`.
 
 En la práctica, las tablas de esta app de Glide no se cruzan con columnas nativas de
 tipo Relation, sino comparando el **valor de texto** de una columna contra otra (ej.
-`Nro Proyecto` en "Actividades Planificacion" contra `codigoProyecto` en "Proyectos
-Planificacion"). Documentar esto de nuevo cada vez que se necesita cruzar datos es
-lento, así que queda fijado a mano en **`relations.json`**, en la raíz del proyecto.
+`Nro Proyecto` en "Actividades Planificacion" contra `Codigo Proyecto` en "Proyectos
+Planificacion"). Esto quedó documentado a mano, con datos reales verificados con
+`obtener_filas`/`inspeccionar_tabla`, en **`relations.json`** (raíz del proyecto) —
+ver también `RELATIONS.md` para el resumen legible de cómo se armó y qué cuidados
+tener (formato de nombre inconsistente entre tablas, joins aproximados, etc.).
 
-- **`obtener_mapa_relaciones`** (tool, sin parámetros): devuelve el contenido de
-  `relations.json` tal cual. Es lectura local instantánea — no llama a la API de
-  Glide. Pedile a Claude que la llame al arrancar cualquier tarea que cruce tablas,
-  así no tiene que adivinar ni volver a inspeccionar cada vez.
+Estructura de `relations.json`:
 
-Cómo se completa `relations.json` a medida que se van documentando más tablas:
+- **`tablas.<clave>`** (snake_case, ej. `actividades_planificacion`): `tableId`,
+  `nombre` (nombre visible en Glide) y `claves` — mapea nombre LÓGICO (ej.
+  `nroProyecto`, `cliente`, `personal`) al id/nombre REAL de columna que hay que
+  usar para leer esa tabla con `obtener_filas`/`buscar_filas`.
+- **`alias_personal`** / **`alias_cliente`**: diccionarios que normalizan nombres
+  que aparecen distinto según la tabla (ej. `"Luis Miguel S"` en Actividades vs.
+  `"Luis Miguel Serrano"` en Capacitaciones; `"SUKASA"` vs. `"COMOHOGAR (SUKASA)"`
+  en Clientes General). Las tools compuestas los usan automáticamente al filtrar
+  por persona o cliente, así no pierden resultados por diferencias de formato.
+- **`pendientes_por_confirmar`**: tablas/relaciones detectadas pero sin confirmar
+  con datos reales todavía (ej. `HorasSoporte Gestion`, `Servicios Gestion`).
 
-1. Llamar `listar_tablas` para conseguir el `tableId` real de la tabla a documentar.
-2. Llamar `inspeccionar_tabla` con ese id para ver sus columnas y tipos.
-3. Agregar (o completar) la entrada de esa tabla en `relations.json`: su `tableId`,
-   sus columnas relevantes, y en `relaciones` qué columna conecta con qué tabla y
-   columna destino (usando las claves ya definidas en `tablas`, ej.
-   `"proyectosPlanificacion"`).
-4. Sacarla de la lista `pendienteDeInspeccionar` una vez documentada.
+- **`obtener_mapa_relaciones`** (tool, sin parámetros): devuelve `relations.json`
+  tal cual, lectura local instantánea (no llama a la API de Glide). Pedile a Claude
+  que la llame al arrancar cualquier tarea que cruce tablas.
 
-No hace falta tocar `index.js` ni `glideClient.js` para esto — es solo editar el
-JSON. El archivo ya trae precargada la tabla `proyectosPlanificacion` (la que usa
-`buscar_proyectos`) y varias tablas más con su estructura esperada pero `tableId`
-en `null`, pendientes de completar (ver siguiente sección).
+Para documentar una tabla nueva o corregir una existente: `listar_tablas` (id) →
+`inspeccionar_tabla` / `obtener_filas` (columnas y valores reales) → agregar o
+editar su entrada en `tablas` dentro de `relations.json`. No hace falta tocar
+`index.js`, `glideClient.js` ni `crossQueries.js` para esto.
+
+⚠️ **Dos `tableId` a confirmar**: `clientes_general` y `personal_general` tienen un
+`" A"` sospechoso al final del id (ej. `"native-table-...hdc A"`) — los ids de Glide
+normalmente no llevan espacios. Si las tools que dependen de esas dos tablas fallan,
+empezar por sacar ese `" A"` y volver a probar.
 
 ## Tools genéricas (sin configuración previa)
 
@@ -196,43 +206,45 @@ devuelve `listar_tablas`):
 - **`buscar_filas`** — `tableId`, `campo`, `valor`, `limite` (default 10, máx 50).
   Filtro por substring case-insensitive sobre cualquier columna de cualquier tabla.
 - **`buscar_texto_global`** — `texto`, `tablas` (array de ids, opcional — si se
-  omite busca en las 29 tablas de la app), `limite_por_tabla` (default 5). Busca un
+  omite busca en las tablas de la app), `limite_por_tabla` (default 5). Busca un
   término en varias tablas a la vez, agrupado por tabla. Útil cuando no se sabe
   dónde está algo.
 
 ## Tools compuestas (dependen de `relations.json`)
 
-Estas cruzan datos entre varias tablas. Cada una valida primero que las tablas que
-necesita tengan `tableId` y las `columnasRemoto` correspondientes completas en
-`relations.json` — si falta algo, devuelven un mensaje explicando exactamente qué
-completar (nunca inventan un mapeo a ciegas):
+Estas cruzan datos entre varias tablas, resolviendo alias de persona/cliente
+automáticamente. Cada una valida primero que las tablas que necesita tengan
+`tableId` y las `claves` correspondientes completas en `relations.json` — si falta
+algo, devuelven un mensaje explicando exactamente qué completar:
 
-- **`obtener_proyecto_completo`** — `nro_proyecto`. Trae el proyecto (ya
-  funcional) + actividades, cronograma, tickets y equipos asignados (pendientes de
-  mapear en `relations.json`) + horas totales.
-- **`obtener_cliente_resumen`** — `cliente`. Proyectos del cliente (ya funcional) +
-  contactos asociados y contadores de oportunidades (pendientes de mapear).
-- **`obtener_personal_resumen`** — `nombre`. Certificaciones, actividades
-  recientes y datos base de una persona (todo pendiente de mapear).
+- **`obtener_proyecto_completo`** — `nro_proyecto`. Proyecto base + actividades,
+  cronograma, equipos asignados, el registro paralelo en Proyectos Gestion, y
+  tickets (join aproximado por cliente, porque Tickets no referencia Nro Proyecto
+  directamente) + horas totales.
+- **`obtener_cliente_resumen`** — `cliente`. Proyectos del cliente + contactos
+  asociados + tickets + fila cruda del maestro en CLIENTES GENERAL.
+- **`obtener_personal_resumen`** — `nombre`. Certificaciones (usa nombre
+  completo internamente vía alias), actividades recientes y datos base.
 - **`horas_por_proyecto`** / **`horas_por_personal`** — suma de horas desde
-  Actividades Planificacion, con `desde`/`hasta` opcionales (pendiente de mapear).
-- **`tickets_abiertos`** / **`tickets_vencidos`** — sobre Tickets Planificacion
-  (pendiente de mapear).
+  Actividades Planificacion, con `desde`/`hasta` opcionales.
+- **`tickets_abiertos`** / **`tickets_vencidos`** — sobre Tickets Planificacion.
 - **`certificaciones_por_vencer`** — `dias` (default 30), sobre Capacitaciones
-  Planificacion (pendiente de mapear).
-- **`proyectos_sin_actualizar`** — `dias` (default 15). **Ya 100% funcional**, solo
-  depende de `Proyectos Planificacion` (usa `fechaRevisado`, ya mapeada).
+  Planificacion.
+- **`proyectos_sin_actualizar`** — `dias` (default 15). Solo depende de
+  `Proyectos Planificacion` (usa `fechaRevisado`, ya mapeada).
 
-Para activar las que dicen "pendiente de mapear": llamar `obtener_filas` sobre la
-tabla en cuestión para ver los nombres reales de columna, y completar
-`tablas.<clave>.tableId` y `tablas.<clave>.columnasRemoto` en `relations.json` —
-apenas se completa, la tool empieza a funcionar sin tocar código.
+Todas estas ya deberían estar activas con los datos reales cargados en
+`relations.json` — si alguna responde "disponible: false", el mensaje indica
+exactamente qué falta completar.
 
 ## Próximos pasos (no incluidos ahora)
 
-- Terminar de mapear en `relations.json` las tablas que necesitan las tools
-  compuestas (actividades, cronograma, tickets, equipos, clientes, personal,
-  capacitaciones — ver `pendiente` en cada entrada de `tablas`).
+- Confirmar los dos `tableId` sospechosos (`clientes_general`, `personal_general`,
+  ver aviso arriba).
+- Terminar `pendientes_por_confirmar` en `relations.json` (HorasSoporte Gestion,
+  Servicios Gestion, relación de Compras Publicas Planificacion, y confirmar si
+  "x - Clientes/Personal Planificacion" son vistas duplicadas de las tablas
+  generales).
 - Deploy remoto (Railway, Render o Fly.io) para no depender de tu máquina local ni
   poder usarlo desde el celular.
 - Tools de escritura (crear/actualizar proyectos).

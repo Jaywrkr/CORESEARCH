@@ -42,9 +42,35 @@ function daysAgo(value) {
 }
 
 /**
- * Verifica que una tabla de relations.json tenga tableId y las columnasRemoto
- * pedidas ya resueltas (no null). Si falta algo, devuelve { ok: false, error }
- * con instrucciones concretas de qué completar en relations.json.
+ * Expande un término de búsqueda (nombre corto, nombre completo, o alias)
+ * a todas sus variantes conocidas según un diccionario de alias tipo
+ * { claveCorta: ["variante1", "variante2", ...] }. Sirve para no perder
+ * matches por diferencias de formato (ej. "Luis Miguel S" vs
+ * "Luis Miguel Serrano", o "SUKASA" vs "COMOHOGAR (SUKASA)").
+ */
+function expandAliases(term, aliasMap) {
+  const variantes = new Set([term]);
+  const lower = term.toLowerCase();
+  for (const [clave, lista] of Object.entries(aliasMap ?? {})) {
+    if (clave.startsWith("_")) continue;
+    const listaVariantes = Array.isArray(lista) ? lista : [];
+    if (clave.toLowerCase() === lower || listaVariantes.some((v) => v.toLowerCase() === lower)) {
+      variantes.add(clave);
+      for (const v of listaVariantes) variantes.add(v);
+    }
+  }
+  return [...variantes];
+}
+
+function matchesAny(value, variantes) {
+  const v = String(value ?? "").toLowerCase();
+  return variantes.some((variante) => v.includes(variante.toLowerCase()));
+}
+
+/**
+ * Verifica que una tabla de relations.json tenga tableId y las claves
+ * pedidas ya resueltas. Si falta algo, devuelve { ok: false, error } con
+ * instrucciones concretas de qué completar.
  */
 function requireTableConfig(relations, tableKey, camposRequeridos = []) {
   const cfg = relations.tablas?.[tableKey];
@@ -54,20 +80,17 @@ function requireTableConfig(relations, tableKey, camposRequeridos = []) {
   if (!cfg.tableId) {
     return {
       ok: false,
-      error:
-        `Falta el tableId de "${cfg.nombreGlide ?? tableKey}" en relations.json. ` +
-        `Corré listar_tablas, copiá el id de "${cfg.nombreGlide ?? tableKey}" y completá ` +
-        `tablas.${tableKey}.tableId en relations.json.`,
+      error: `Falta el tableId de "${cfg.nombre ?? tableKey}" en relations.json.`,
     };
   }
-  const faltantes = camposRequeridos.filter((campo) => !cfg.columnasRemoto?.[campo]);
+  const faltantes = camposRequeridos.filter((campo) => !cfg.claves?.[campo]);
   if (faltantes.length > 0) {
     return {
       ok: false,
       error:
-        `Faltan mapear columnas de "${cfg.nombreGlide ?? tableKey}" en relations.json: ` +
-        `${faltantes.join(", ")}. Usá obtener_filas con tableId "${cfg.tableId}" para ver los ` +
-        `nombres reales de columna y completá tablas.${tableKey}.columnasRemoto en relations.json.`,
+        `Faltan mapear columnas de "${cfg.nombre ?? tableKey}" en relations.json: ` +
+        `${faltantes.join(", ")}. Usá obtener_filas con tableId "${cfg.tableId}" para confirmar ` +
+        `y completá tablas.${tableKey}.claves en relations.json.`,
     };
   }
   return { ok: true, cfg };
@@ -78,7 +101,7 @@ async function fetchMapped(cfg, camposRequeridos = []) {
   return rows.map((row) => {
     const out = {};
     for (const campo of camposRequeridos) {
-      out[campo] = row[cfg.columnasRemoto[campo]] ?? null;
+      out[campo] = row[cfg.claves[campo]] ?? null;
     }
     return out;
   });
@@ -156,10 +179,10 @@ export async function obtenerProyectoCompleto(nroProyecto) {
   }
 
   for (const [tableKey, seccion, camposExtra] of [
-    ["actividadesPlanificacion", "actividades", ["actividad", "fecha", "personal", "horas"]],
-    ["cronogramaPlanificacion", "cronograma", []],
-    ["ticketsPlanificacion", "tickets", []],
-    ["equiposProyecto", "equiposAsignados", []],
+    ["actividades_planificacion", "actividades", ["personal", "fecha", "horas"]],
+    ["cronograma_planificacion", "cronograma", ["personal", "fechaCreacion", "fechaTrabajo", "estatus"]],
+    ["equipos_proyecto", "equiposAsignados", []],
+    ["proyectos_gestion", "gestion", ["cliente", "descripcion", "monto", "estatus", "fechaActa"]],
   ]) {
     const check = requireTableConfig(relations, tableKey, ["nroProyecto", ...camposExtra]);
     if (!check.ok) {
@@ -169,6 +192,31 @@ export async function obtenerProyectoCompleto(nroProyecto) {
     const rows = await fetchMapped(check.cfg, ["nroProyecto", ...camposExtra]);
     const propias = rows.filter((r) => includesCI(r.nroProyecto, nroProyecto));
     resultado.secciones[seccion] = { disponible: true, filas: propias };
+  }
+
+  // Tickets no tiene columna Nro Proyecto (se vincula por Cliente): join
+  // aproximado usando el cliente del proyecto ya encontrado.
+  const ticketsCheck = requireTableConfig(relations, "tickets_planificacion", [
+    "cliente",
+    "estatus",
+    "fechaCreacion",
+    "codigoTicket",
+  ]);
+  if (!ticketsCheck.ok) {
+    resultado.secciones.tickets = { disponible: false, motivo: ticketsCheck.error };
+  } else if (!proyecto?.clienteProyecto) {
+    resultado.secciones.tickets = {
+      disponible: false,
+      motivo: "Tickets se vincula por Cliente, no por Nro Proyecto, y no se encontró el proyecto (o su cliente) para cruzar.",
+    };
+  } else {
+    const variantesCliente = expandAliases(proyecto.clienteProyecto, relations.alias_cliente);
+    const rows = await fetchMapped(ticketsCheck.cfg, ["cliente", "estatus", "fechaCreacion", "codigoTicket"]);
+    resultado.secciones.tickets = {
+      disponible: true,
+      notas: "Join aproximado por cliente del proyecto (Tickets no referencia Nro Proyecto directamente).",
+      filas: rows.filter((r) => matchesAny(r.cliente, variantesCliente)),
+    };
   }
 
   if (resultado.secciones.actividades?.disponible) {
@@ -187,11 +235,14 @@ export async function obtenerProyectoCompleto(nroProyecto) {
 
 export async function obtenerClienteResumen(cliente) {
   const relations = loadRelations();
+  const variantes = expandAliases(cliente, relations.alias_cliente);
+
   const proyectos = await projectsTable.get();
-  const propios = proyectos.filter((p) => includesCI(p.clienteProyecto, cliente));
+  const propios = proyectos.filter((p) => matchesAny(p.clienteProyecto, variantes));
 
   const resultado = {
     cliente,
+    variantesConsideradas: variantes,
     proyectos: propios.map((p) => ({
       codigo: p.codigoProyecto,
       cliente: p.clienteProyecto,
@@ -201,35 +252,39 @@ export async function obtenerClienteResumen(cliente) {
     secciones: {},
   };
 
-  const contactos = requireTableConfig(relations, "clientesPersonalPlanificacion", ["cliente"]);
-  if (!contactos.ok) {
-    resultado.secciones.contactos = { disponible: false, motivo: contactos.error };
+  const contactosCheck = requireTableConfig(relations, "clientes_personal_planificacion", ["cliente"]);
+  if (!contactosCheck.ok) {
+    resultado.secciones.contactos = { disponible: false, motivo: contactosCheck.error };
   } else {
-    const rows = await fetchMapped(contactos.cfg, ["cliente"]);
-    resultado.secciones.contactos = {
-      disponible: true,
-      filas: rows.filter((r) => includesCI(r.cliente, cliente)),
-    };
+    const rows = await fetchMapped(contactosCheck.cfg, ["cliente"]);
+    resultado.secciones.contactos = { disponible: true, filas: rows.filter((r) => matchesAny(r.cliente, variantes)) };
   }
 
-  const oportunidades = requireTableConfig(relations, "clientesGeneral", [
-    "nombreCliente",
-    "oportunidadesGanadas",
-    "oportunidadesPerdidas",
-    "oportunidadesDetectadas",
+  const ticketsCheck = requireTableConfig(relations, "tickets_planificacion", [
+    "cliente",
+    "estatus",
+    "fechaCreacion",
+    "codigoTicket",
   ]);
-  if (!oportunidades.ok) {
-    resultado.secciones.oportunidades = { disponible: false, motivo: oportunidades.error };
+  if (!ticketsCheck.ok) {
+    resultado.secciones.tickets = { disponible: false, motivo: ticketsCheck.error };
   } else {
-    const rows = await fetchMapped(oportunidades.cfg, [
-      "nombreCliente",
-      "oportunidadesGanadas",
-      "oportunidadesPerdidas",
-      "oportunidadesDetectadas",
-    ]);
-    resultado.secciones.oportunidades = {
+    const rows = await fetchMapped(ticketsCheck.cfg, ["cliente", "estatus", "fechaCreacion", "codigoTicket"]);
+    resultado.secciones.tickets = { disponible: true, filas: rows.filter((r) => matchesAny(r.cliente, variantes)) };
+  }
+
+  const maestroCheck = requireTableConfig(relations, "clientes_general", ["cliente"]);
+  if (!maestroCheck.ok) {
+    resultado.secciones.maestro = { disponible: false, motivo: maestroCheck.error };
+  } else {
+    const rows = await rawTable(maestroCheck.cfg.tableId).get();
+    const key = maestroCheck.cfg.claves.cliente;
+    resultado.secciones.maestro = {
       disponible: true,
-      filas: rows.filter((r) => includesCI(r.nombreCliente, cliente)),
+      notas:
+        "Filas crudas sin transformar (no hay mapeo de columnas de oportunidades ganadas/perdidas/" +
+        "detectadas todavía en relations.json) — revisar campos disponibles acá mismo.",
+      filas: rows.filter((r) => matchesAny(r[key], variantes)),
     };
   }
 
@@ -242,51 +297,54 @@ export async function obtenerClienteResumen(cliente) {
 
 export async function obtenerPersonalResumen(nombre) {
   const relations = loadRelations();
-  const resultado = { nombre, secciones: {} };
+  const variantes = expandAliases(nombre, relations.alias_personal);
+  const resultado = { nombre, variantesConsideradas: variantes, secciones: {} };
 
-  const cert = requireTableConfig(relations, "capacitacionesPlanificacion", [
+  const certCheck = requireTableConfig(relations, "capacitaciones_planificacion", [
     "personal",
     "expiracion",
-    "certificacion",
+    "marca",
+    "estatus",
   ]);
-  if (!cert.ok) {
-    resultado.secciones.certificaciones = { disponible: false, motivo: cert.error };
+  if (!certCheck.ok) {
+    resultado.secciones.certificaciones = { disponible: false, motivo: certCheck.error };
   } else {
-    const rows = await fetchMapped(cert.cfg, ["personal", "expiracion", "certificacion"]);
+    const rows = await fetchMapped(certCheck.cfg, ["personal", "expiracion", "marca", "estatus"]);
     resultado.secciones.certificaciones = {
       disponible: true,
-      filas: rows.filter((r) => includesCI(r.personal, nombre)),
+      filas: rows.filter((r) => matchesAny(r.personal, variantes)),
     };
   }
 
-  const act = requireTableConfig(relations, "actividadesPlanificacion", [
+  const actCheck = requireTableConfig(relations, "actividades_planificacion", [
     "personal",
     "fecha",
-    "actividad",
+    "nroProyecto",
     "horas",
   ]);
-  if (!act.ok) {
-    resultado.secciones.actividadesRecientes = { disponible: false, motivo: act.error };
+  if (!actCheck.ok) {
+    resultado.secciones.actividadesRecientes = { disponible: false, motivo: actCheck.error };
   } else {
-    const rows = await fetchMapped(act.cfg, ["personal", "fecha", "actividad", "horas"]);
+    const rows = await fetchMapped(actCheck.cfg, ["personal", "fecha", "nroProyecto", "horas"]);
     resultado.secciones.actividadesRecientes = {
       disponible: true,
-      filas: rows.filter((r) => includesCI(r.personal, nombre)),
+      filas: rows.filter((r) => matchesAny(r.personal, variantes)),
     };
   }
 
-  const base = requireTableConfig(relations, "personalGeneral", [
-    "nombre",
+  const baseCheck = requireTableConfig(relations, "personal_general", [
+    "personal",
+    "nombreCompleto",
     "rol",
-    "certificacionesTecnologia",
+    "fechaContrato",
   ]);
-  if (!base.ok) {
-    resultado.secciones.datosBase = { disponible: false, motivo: base.error };
+  if (!baseCheck.ok) {
+    resultado.secciones.datosBase = { disponible: false, motivo: baseCheck.error };
   } else {
-    const rows = await fetchMapped(base.cfg, ["nombre", "rol", "certificacionesTecnologia"]);
+    const rows = await fetchMapped(baseCheck.cfg, ["personal", "nombreCompleto", "rol", "fechaContrato"]);
     resultado.secciones.datosBase = {
       disponible: true,
-      filas: rows.filter((r) => includesCI(r.nombre, nombre)),
+      filas: rows.filter((r) => matchesAny(r.personal, variantes) || matchesAny(r.nombreCompleto, variantes)),
     };
   }
 
@@ -299,7 +357,7 @@ export async function obtenerPersonalResumen(nombre) {
 
 async function horasFiltradas({ nroProyecto, nombrePersonal, desde, hasta }) {
   const relations = loadRelations();
-  const check = requireTableConfig(relations, "actividadesPlanificacion", [
+  const check = requireTableConfig(relations, "actividades_planificacion", [
     "nroProyecto",
     "personal",
     "fecha",
@@ -307,10 +365,11 @@ async function horasFiltradas({ nroProyecto, nombrePersonal, desde, hasta }) {
   ]);
   if (!check.ok) return { disponible: false, motivo: check.error };
 
+  const variantes = nombrePersonal ? expandAliases(nombrePersonal, relations.alias_personal) : null;
   const rows = await fetchMapped(check.cfg, ["nroProyecto", "personal", "fecha", "horas"]);
   const filtradas = rows.filter((r) => {
     if (nroProyecto && !includesCI(r.nroProyecto, nroProyecto)) return false;
-    if (nombrePersonal && !includesCI(r.personal, nombrePersonal)) return false;
+    if (variantes && !matchesAny(r.personal, variantes)) return false;
     return inDateRange(r.fecha, desde, hasta);
   });
 
@@ -334,19 +393,20 @@ const ESTADOS_CERRADOS = ["cerrado", "cerrada", "finalizado", "finalizada", "res
 
 export async function ticketsAbiertos(cliente) {
   const relations = loadRelations();
-  const check = requireTableConfig(relations, "ticketsPlanificacion", [
-    "nroProyecto",
+  const check = requireTableConfig(relations, "tickets_planificacion", [
     "cliente",
     "estatus",
     "fechaCreacion",
+    "codigoTicket",
   ]);
   if (!check.ok) return { disponible: false, motivo: check.error };
 
-  const rows = await fetchMapped(check.cfg, ["nroProyecto", "cliente", "estatus", "fechaCreacion"]);
+  const variantes = cliente ? expandAliases(cliente, relations.alias_cliente) : null;
+  const rows = await fetchMapped(check.cfg, ["cliente", "estatus", "fechaCreacion", "codigoTicket"]);
   const abiertos = rows.filter((r) => {
     const estatus = (r.estatus ?? "").toLowerCase();
     if (ESTADOS_CERRADOS.some((c) => estatus.includes(c))) return false;
-    if (cliente && !includesCI(r.cliente, cliente)) return false;
+    if (variantes && !matchesAny(r.cliente, variantes)) return false;
     return true;
   });
   return { disponible: true, total: abiertos.length, filas: abiertos };
@@ -354,15 +414,15 @@ export async function ticketsAbiertos(cliente) {
 
 export async function ticketsVencidos(dias = 7) {
   const relations = loadRelations();
-  const check = requireTableConfig(relations, "ticketsPlanificacion", [
-    "nroProyecto",
+  const check = requireTableConfig(relations, "tickets_planificacion", [
     "cliente",
     "estatus",
     "fechaCreacion",
+    "codigoTicket",
   ]);
   if (!check.ok) return { disponible: false, motivo: check.error };
 
-  const rows = await fetchMapped(check.cfg, ["nroProyecto", "cliente", "estatus", "fechaCreacion"]);
+  const rows = await fetchMapped(check.cfg, ["cliente", "estatus", "fechaCreacion", "codigoTicket"]);
   const vencidos = rows.filter((r) => {
     const estatus = (r.estatus ?? "").toLowerCase();
     if (ESTADOS_CERRADOS.some((c) => estatus.includes(c))) return false;
@@ -378,14 +438,14 @@ export async function ticketsVencidos(dias = 7) {
 
 export async function certificacionesPorVencer(dias = 30) {
   const relations = loadRelations();
-  const check = requireTableConfig(relations, "capacitacionesPlanificacion", [
+  const check = requireTableConfig(relations, "capacitaciones_planificacion", [
     "personal",
     "expiracion",
-    "certificacion",
+    "marca",
   ]);
   if (!check.ok) return { disponible: false, motivo: check.error };
 
-  const rows = await fetchMapped(check.cfg, ["personal", "expiracion", "certificacion"]);
+  const rows = await fetchMapped(check.cfg, ["personal", "expiracion", "marca"]);
   const ahora = Date.now();
   const limite = ahora + dias * 24 * 60 * 60 * 1000;
   const porVencer = rows.filter((r) => {

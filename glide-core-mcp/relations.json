@@ -1,144 +1,208 @@
 {
-  "_notas": [
-    "Mapa de relaciones ENTRE TABLAS de la app de Glide, documentado a mano.",
-    "No se genera desde la API: se completa inspeccionando cada tabla con",
-    "inspeccionar_tabla / obtener_filas (y listar_tablas para conseguir el",
-    "tableId) y anotando acá qué columna de una tabla matchea por VALOR (no",
-    "por relation-id de Glide) con qué columna de otra tabla.",
-    "",
-    "Cada tabla tiene 'columnasRemoto': mapea nombre LÓGICO -> id REAL de",
-    "columna (el 'id' que devuelve inspeccionar_tabla, o la key que aparece",
-    "en las filas crudas de obtener_filas). Mientras un campo esté en null,",
-    "las tools compuestas de index.js (obtener_proyecto_completo,",
-    "tickets_abiertos, etc.) NO van a inventar un valor: van a avisar",
-    "explícitamente qué falta completar acá antes de poder correr.",
-    "",
-    "Editar este archivo a mano cuando se documente una tabla nueva; no hace",
-    "falta tocar index.js ni glideClient.js para activar las tools que",
-    "dependen de ella — leen esta config en cada llamada."
-  ],
+  "_descripcion": "Mapa de relaciones entre tablas de la app Glide de Coresolutions. Generado manualmente porque Glide no expone relaciones/foreign keys via API. Las claves aqui documentadas son las que permiten cruzar datos entre tablas usando buscar_filas / obtener_filas.",
+  "_generado": "2026-08-26",
+
   "tablas": {
-    "proyectosPlanificacion": {
-      "nombreGlide": "Proyectos Planificacion",
+    "proyectos_planificacion": {
       "tableId": "native-table-IKrt1rYFBLyuLWD5Pa1B",
-      "grupo": "Planificación de proyectos",
-      "claveProyecto": "codigoProyecto",
-      "notas": "Ya mapeada como projectsTable en glideClient.js (10 columnas: las 8 originales + fechaRevisado + liderProyecto). Las tools compuestas la usan directo desde ahí, no desde columnasRemoto."
+      "nombre": "Proyectos Planificacion",
+      "claves": {
+        "nroProyecto": "Codigo Proyecto",
+        "cliente": "Cliente Proyecto"
+      }
     },
-    "actividadesPlanificacion": {
-      "nombreGlide": "Actividades Planificacion",
-      "tableId": null,
-      "grupo": "Planificación de proyectos",
-      "columnasConocidas": {
-        "Actividad": "texto",
-        "Fecha": "fecha/hora",
-        "Personal": "texto",
-        "Nro Proyecto": "texto",
-        "Horas": "número"
+    "servicios_atencion_planificacion": {
+      "tableId": "native-table-yk33yc2WxXoUqdHmOn87",
+      "nombre": "Servicios Atencion Planificacion",
+      "claves": {
+        "cliente": "Cliente",
+        "personal": "Personal Asignado"
+      }
+    },
+    "actividades_planificacion": {
+      "tableId": "native-table-loyIJA7QJIxG4k0rKbKZ",
+      "nombre": "Actividades Planificacion",
+      "claves": {
+        "nroProyecto": "remote\u001dNro Proyecto",
+        "personal": "remote\u001dPersonal",
+        "fecha": "remote\u001dFecha",
+        "horas": "jO2TW"
+      }
+    },
+    "cronograma_planificacion": {
+      "tableId": "native-table-SQHX2zJld3tKsxqS2qLh",
+      "nombre": "Cronograma Planificacion",
+      "claves": {
+        "nroProyecto": "remote\u001dNro Proyecto",
+        "personal": "remote\u001dPersonal",
+        "fechaCreacion": "remote\u001dFecha de Creacion",
+        "fechaTrabajo": "remote\u001dFecha de Trabajo",
+        "estatus": "remote\u001dEstado"
       },
-      "columnasRemoto": {
-        "actividad": null,
-        "fecha": null,
-        "personal": null,
-        "nroProyecto": null,
-        "horas": null
+      "notas": "Columnas por tecnico (ej. remote\u001dChristian F) son booleans que marcan quien ejecuto la tarea, ademas del campo Personal."
+    },
+    "tickets_planificacion": {
+      "tableId": "native-table-xiOVKjhKWRWMLDSitOL9",
+      "nombre": "Tickets Planificacion",
+      "claves": {
+        "cliente": "remote\u001dClente",
+        "personalEjecuta": "remote\u001dPersonal Trabajo",
+        "personalReporta": "remote\u001dPersoal Reporta",
+        "fechaCreacion": "remote\u001dFecha de Creaci\u00f3n",
+        "fechaFinalizacion": "remote\u001dFecha de Finalizaci\u00f3n",
+        "estatus": "remote\u001dEstatus",
+        "codigoTicket": "pPSEn"
       },
-      "relaciones": [
-        {
-          "campo": "nroProyecto",
-          "tipo": "match_por_valor",
-          "conectaCon": "proyectosPlanificacion",
-          "campoDestino": "codigoProyecto",
-          "notas": "'Nro Proyecto' es texto libre, no un Relation nativo de Glide: se cruza comparando el valor de texto contra codigoProyecto."
-        }
-      ],
-      "usadaPor": ["obtener_proyecto_completo", "horas_por_proyecto", "horas_por_personal", "obtener_personal_resumen"],
-      "pendiente": "Falta tableId (correr listar_tablas) y confirmar columnasRemoto con obtener_filas."
+      "notas": "El vinculo principal de esta tabla es por Cliente, no por Nro Proyecto. Muchos tickets no tienen proyecto asociado. Ojo con el typo 'Clente' y 'Persoal Reporta', son asi en la fuente."
     },
-    "cronogramaPlanificacion": {
-      "nombreGlide": "Cronograma Planificacion",
-      "tableId": null,
-      "grupo": "Planificación de proyectos",
-      "columnasRemoto": { "nroProyecto": null },
-      "usadaPor": ["obtener_proyecto_completo"],
-      "pendiente": "Falta inspeccionar por completo."
+    "equipos_proyecto": {
+      "tableId": "native-table-HiOeIdIFyJwqo96pThja",
+      "nombre": "Equipos Proyecto",
+      "claves": {
+        "nroProyecto": "Name"
+      }
     },
-    "ticketsPlanificacion": {
-      "nombreGlide": "Tickets Planificacion",
-      "tableId": null,
-      "grupo": "Planificación de proyectos",
-      "columnasRemoto": { "nroProyecto": null, "cliente": null, "estatus": null, "fechaCreacion": null },
-      "usadaPor": ["obtener_proyecto_completo", "tickets_abiertos", "tickets_vencidos"],
-      "pendiente": "Falta inspeccionar por completo."
+    "clientes_personal_planificacion": {
+      "tableId": "native-table-JnzD5kIr4ALCaY2Vmiko",
+      "nombre": "Clientes Personal Planificacion",
+      "claves": {
+        "cliente": "gjiLK"
+      },
+      "notas": "Tabla de CONTACTOS del cliente, no de personal interno de Coresolutions."
     },
-    "equiposProyecto": {
-      "nombreGlide": "Equipos Proyecto",
-      "tableId": null,
-      "grupo": "Planificación de proyectos",
-      "columnasRemoto": { "nroProyecto": null },
-      "usadaPor": ["obtener_proyecto_completo"],
-      "pendiente": "Falta inspeccionar por completo."
+    "clientes_general": {
+      "tableId": "native-table-snSiRZBOaRZsAZYgohdc A",
+      "nombre": "CLIENTES GENERAL",
+      "claves": {
+        "cliente": "Name"
+      },
+      "notas": "Clave maestra de cliente. Puede tener alias en columna 'Name 2' (id 9VHEq) que no siempre coincide con el texto libre usado en otras tablas."
     },
-    "clientesPersonalPlanificacion": {
-      "nombreGlide": "Clientes Personal Planificacion",
-      "tableId": null,
-      "grupo": "Planificación de proyectos",
-      "columnasRemoto": { "cliente": null },
-      "usadaPor": ["obtener_cliente_resumen"],
-      "pendiente": "Falta inspeccionar por completo."
+    "capacitaciones_planificacion": {
+      "tableId": "native-table-jQNnvf4AfL3FtG5iUDeG",
+      "nombre": "Capacitaciones Planificacion",
+      "claves": {
+        "personal": "weiDt",
+        "marca": "Name",
+        "estatus": "DKB2a",
+        "expiracion": "EPNj5"
+      },
+      "notas": "IMPORTANTE: el campo Personal aqui usa NOMBRE COMPLETO (ej. 'Luis Miguel Serrano'), a diferencia de Actividades/Cronograma que usan nombre corto (ej. 'Luis Miguel S'). Usar el diccionario alias_personal para cruzar."
     },
-    "clientesGeneral": {
-      "nombreGlide": "CLIENTES GENERAL",
-      "tableId": null,
-      "grupo": "Generales / catálogos",
-      "columnasRemoto": { "nombreCliente": null, "oportunidadesGanadas": null, "oportunidadesPerdidas": null, "oportunidadesDetectadas": null },
-      "usadaPor": ["obtener_cliente_resumen"],
-      "pendiente": "Falta inspeccionar por completo."
+    "personal_general": {
+      "tableId": "native-table-PuueJIao2lO4tlAYYqHa A",
+      "nombre": "PERSONAL GENERAL",
+      "claves": {
+        "personal": "Name",
+        "nombreCompleto": "Z5kGL",
+        "rol": "7Q5Jz",
+        "fechaContrato": "tQdDh"
+      },
+      "notas": "Name es la clave CORTA correcta para cruzar con Personal de Actividades/Cronograma. NO usar Nombre Completo para el join directo."
     },
-    "capacitacionesPlanificacion": {
-      "nombreGlide": "Capacitaciones Planificacion",
-      "tableId": null,
-      "grupo": "Planificación de proyectos",
-      "columnasRemoto": { "personal": null, "expiracion": null, "certificacion": null },
-      "usadaPor": ["obtener_personal_resumen", "certificaciones_por_vencer"],
-      "pendiente": "Falta inspeccionar por completo."
+    "proyectos_gestion": {
+      "tableId": "native-table-NTJXNIVoeSuTDa9RkVmI",
+      "nombre": "Proyectos Gestion",
+      "claves": {
+        "nroProyecto": "remote\u001dcolumn1",
+        "cliente": "remote\u001dcolumn2",
+        "descripcion": "remote\u001dADMINISTRACI\u00d3N",
+        "nroContrato": "remote\u001dcolumn4",
+        "referenciaOpi": "remote\u001dcolumn5",
+        "fechaPrincipal": "remote\u001dcolumn6",
+        "fechaSecundaria": "remote\u001dcolumn7",
+        "plazoDias": "remote\u001dcolumn8",
+        "fechaActa": "remote\u001dcolumn11",
+        "monto": "remote\u001dcolumn12",
+        "estatus": "remote\u001dcolumn13",
+        "formaPago": "A4jRq",
+        "administrador": "qh4Yu"
+      },
+      "notas": "Columnas genericas confirmadas con datos reales el 2026-08-26. column1 = Codigo Proyecto en formato CS-###/POA ####/PPR-####, coincide con Nro Proyecto de otras tablas."
     },
-    "personalGeneral": {
-      "nombreGlide": "PERSONAL GENERAL",
-      "tableId": null,
-      "grupo": "Generales / catálogos",
-      "columnasRemoto": { "nombre": null, "rol": null, "certificacionesTecnologia": null },
-      "usadaPor": ["obtener_personal_resumen"],
-      "pendiente": "Falta inspeccionar por completo."
+    "compras_publicas_planificacion": {
+      "tableId": "native-table-LsbtHKUpqvBfucxJtuLO",
+      "nombre": "Compras Publicas Planificacion",
+      "claves": {
+        "nroProyecto": "Nombre Proyecto"
+      },
+      "notas": "Relacion probable, no confirmada con datos reales aun."
     },
-    "proyectosGestion": {
-      "nombreGlide": "Proyectos Gestion",
-      "tableId": null,
-      "grupo": "Gestión",
-      "columnasRemoto": {},
-      "usadaPor": ["obtener_proyecto_completo (posible fuente alternativa)"],
-      "pendiente": "Columnas genéricas (column1, column2...) reportadas: usar obtener_filas para ver valores reales antes de mapear nada."
+    "control_ordenes_compra_track": {
+      "tableId": "native-table-5ovM2HsnWlStMFGLx0A0",
+      "nombre": "Comtrol de Ordenes de Compra Track",
+      "claves": {
+        "opi": "OPI",
+        "cliente": "Cliente",
+        "personal": "Personal"
+      }
+    },
+    "hardware": {
+      "tableId": "native-table-aKT1tnnibc5UlLJGx3bu",
+      "nombre": "*HARDWARE",
+      "claves": {
+        "opi": "NRO OPI",
+        "cliente": "Cliente",
+        "personal": "Personal"
+      }
+    },
+    "software": {
+      "tableId": "native-table-52OlncW9AmrbdaRn1B1z",
+      "nombre": "*SOFTWARE",
+      "claves": {
+        "opi": "Opi",
+        "cliente": "CLIENTE/NOMBRE",
+        "personal": "Personal"
+      }
+    },
+    "workflow_run_log": {
+      "tableId": "native-table-327faa94-36de-41d5-821a-9a5c15059418",
+      "nombre": "Workflow Run Log",
+      "claves": {
+        "runId": "Run ID"
+      }
+    },
+    "workflow_step_log": {
+      "tableId": "native-table-79d398f8-4946-4380-a020-5b0e4f3ac199",
+      "nombre": "Workflow Step Log",
+      "claves": {
+        "runId": "Run ID"
+      },
+      "notas": "1-a-muchos con Workflow Run Log via Run ID."
     }
   },
-  "pendienteDeInspeccionar": [
-    "Servicios Atencion Planificacion",
-    "Estados Planificacion",
-    "Comentarios Planificacion",
-    "Usuarios Planificacion",
-    "Compras Publicas Planificacion",
-    "Frases Planificación",
-    "x - Clientes Planificacion",
-    "x - Personal Planificacion",
-    "HorasSoporte Gestion",
-    "Servicios Gestion",
-    "Comtrol de Ordenes de Compra Track",
-    "Estados Track",
-    "Companies Track",
-    "Check Diario",
-    "*HARDWARE",
-    "*SOFTWARE",
-    "*ESTADOS",
-    "Workflow Run Log",
-    "Workflow Step Log"
+
+  "alias_personal": {
+    "_descripcion": "Normaliza nombre corto <-> nombre completo. La clave es el nombre CORTO (formato usado en Actividades/Cronograma/PERSONAL GENERAL), el valor son las variantes conocidas en otras tablas.",
+    "Andres C": ["Andres Cardenas", "Andrés Cárdenas", "Cesar Andres Cardenas Neira"],
+    "Christian F": ["Christian Flores"],
+    "Christian Q": ["Christian Quinde"],
+    "Diego R": ["Diego Ramon"],
+    "Marcelo L": ["Marcelo"],
+    "Luis Miguel S": ["Luis Miguel Serrano"],
+    "Patricio G": ["Patricio"],
+    "Jonnathan P": ["Jonnathan"],
+    "Alberto C": ["Alberto"],
+    "Cristian Q": ["Cristian Quinde"],
+    "Olmedo A": ["Olmedo"],
+    "Andrea T": ["Andrea"],
+    "Hernan G": ["Hernan"],
+    "Paola T": ["Paola"],
+    "Juan Carlos Jaramillo": ["Juan CJaramillo", "JCJV", "JCJP"]
+  },
+
+  "alias_cliente": {
+    "_descripcion": "Normaliza nombre corto de cliente usado en Proyectos/Tickets/Actividades con variantes en CLIENTES GENERAL. Completar segun se detecten mas casos.",
+    "SUKASA": ["COMOHOGAR (SUKASA)"],
+    "COOPMEGO": [],
+    "AZENDE": [],
+    "COOP. CREA": ["COOPERATIVA CREA", "COOP CREA"]
+  },
+
+  "pendientes_por_confirmar": [
+    "HorasSoporte Gestion (native-table-LMsOjeWMaiSwMIKsfgsH) - columnas genericas, falta ver filas reales",
+    "Servicios Gestion (native-table-66H8BL54fLCREZu4cx4m) - columnas genericas, falta ver filas reales",
+    "Compras Publicas Planificacion - relacion con Nro Proyecto no confirmada con datos reales",
+    "x - Clientes Planificacion / x - Personal Planificacion - parecen ser vistas duplicadas de CLIENTES GENERAL y PERSONAL GENERAL, confirmar si son la misma tabla fisica antes de tratarlas como fuente separada"
   ]
 }
