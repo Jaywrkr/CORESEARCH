@@ -6,6 +6,19 @@ import { rawTable, glideApp, projectsTable } from "./glideClient.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const relationsPath = join(__dirname, "relations.json");
 
+// Valores de codigoProyecto que en la práctica son basura: headers de página
+// u otro texto capturado como si fuera una fila real (ej. "Proyecto" cuando
+// se filtró/copió la propia cabecera de la tabla en Glide).
+const CODIGOS_BASURA = new Set(["proyecto", "código", "codigo", "cliente", "estado", "n/a"]);
+
+export function esFilaBasura(p) {
+  const codigo = (p.codigoProyecto ?? "").trim().toLowerCase();
+  if (!codigo) return true;
+  if (CODIGOS_BASURA.has(codigo)) return true;
+  if (codigo.startsWith("versión") || codigo.startsWith("version")) return true;
+  return false;
+}
+
 export function loadRelations() {
   return JSON.parse(readFileSync(relationsPath, "utf-8"));
 }
@@ -238,7 +251,7 @@ export async function obtenerClienteResumen(cliente) {
   const variantes = expandAliases(cliente, relations.alias_cliente);
 
   const proyectos = await projectsTable.get();
-  const propios = proyectos.filter((p) => matchesAny(p.clienteProyecto, variantes));
+  const propios = proyectos.filter((p) => !esFilaBasura(p) && matchesAny(p.clienteProyecto, variantes));
 
   const resultado = {
     cliente,
@@ -460,9 +473,13 @@ export async function certificacionesPorVencer(dias = 30) {
 // 12: proyectos_sin_actualizar (100% funcional: solo depende de projectsTable)
 // -----------------------------------------------------------------------
 
-export async function proyectosSinActualizar(dias = 15) {
+export async function proyectosSinActualizar(dias = 15, estado) {
   const proyectos = await projectsTable.get();
+  const target = estado ? estado.toLowerCase() : null;
+
   const sinActualizar = proyectos.filter((p) => {
+    if (esFilaBasura(p)) return false;
+    if (target && (p.estado ?? "").toLowerCase() !== target) return false;
     if (!p.fechaRevisado) return true;
     const edad = daysAgo(p.fechaRevisado);
     return edad === null || edad > dias;
@@ -470,6 +487,7 @@ export async function proyectosSinActualizar(dias = 15) {
 
   return {
     diasUmbral: dias,
+    estadoFiltrado: estado ?? null,
     total: sinActualizar.length,
     proyectos: sinActualizar.map((p) => ({
       codigo: p.codigoProyecto,

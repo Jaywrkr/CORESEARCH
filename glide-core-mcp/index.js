@@ -19,6 +19,7 @@ import {
   ticketsVencidos,
   certificacionesPorVencer,
   proyectosSinActualizar,
+  esFilaBasura,
 } from "./crossQueries.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,7 +65,7 @@ server.registerTool(
 
     const rows = await projectsTable.get();
 
-    let filtered = rows;
+    let filtered = rows.filter((row) => !esFilaBasura(row));
 
     if (servicio) {
       const needle = servicio.toLowerCase();
@@ -367,13 +368,19 @@ server.registerTool(
     title: "Listar proyectos sin revisar recientemente",
     description:
       "Proyectos de Proyectos Planificacion cuya fecha de revisión está más atrás que N días, o " +
-      "vacía — para detectar seguimiento descuidado. Esta tool funciona sin configuración adicional " +
-      "en relations.json.",
+      "vacía — para detectar seguimiento descuidado. Filtra automáticamente filas basura (headers " +
+      "de página capturados como datos). Por default trae TODOS los estados, incluyendo 'Terminado' " +
+      "(que normalmente no necesita seguimiento) — pasar estado='En Curso' (u otro) para enfocarse " +
+      "en proyectos activos abandonados.",
     inputSchema: {
       dias: z.number().int().positive().optional().describe("Default 15."),
+      estado: z
+        .string()
+        .optional()
+        .describe("Filtro exacto sobre 'estado', case-insensitive (ej. 'En Curso'). Opcional."),
     },
   },
-  async ({ dias }) => jsonResult(await proyectosSinActualizar(dias ?? 15))
+  async ({ dias, estado }) => jsonResult(await proyectosSinActualizar(dias ?? 15, estado))
 );
 
 async function main() {
