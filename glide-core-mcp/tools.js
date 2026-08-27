@@ -309,24 +309,27 @@ export function registerTools(server) {
     {
       title: "Listar tickets abiertos",
       description:
-        "Filtra Tickets Planificacion por estatus distinto de cerrado/finalizado, opcionalmente por cliente.",
+        "Filtra Tickets Planificacion por estatus distinto de cerrado/finalizado/cumplido, opcionalmente por cliente. Devuelve 'total' (cuántos hay en total) y 'filas' (recortadas a 'limite', default 50) para no saturar la respuesta.",
       inputSchema: {
         cliente: z.string().optional().describe("Filtrar además por cliente, opcional."),
+        limite: z.number().int().positive().max(200).optional().describe("Default 50, máx 200."),
       },
     },
-    async ({ cliente }) => jsonResult(await ticketsAbiertos(cliente))
+    async ({ cliente, limite }) => jsonResult(await ticketsAbiertos(cliente, limite ?? 50))
   );
 
   server.registerTool(
     "tickets_vencidos",
     {
       title: "Listar tickets vencidos",
-      description: "Tickets abiertos cuya fecha de creación supera N días sin resolución.",
+      description:
+        "Tickets abiertos (no cerrados/cumplidos) cuya fecha de creación supera N días sin resolución. Devuelve 'total' y 'filas' (recortadas a 'limite', default 50).",
       inputSchema: {
         dias: z.number().int().positive().optional().describe("Default 7."),
+        limite: z.number().int().positive().max(200).optional().describe("Default 50, máx 200."),
       },
     },
-    async ({ dias }) => jsonResult(await ticketsVencidos(dias ?? 7))
+    async ({ dias, limite }) => jsonResult(await ticketsVencidos(dias ?? 7, limite ?? 50))
   );
 
   server.registerTool(

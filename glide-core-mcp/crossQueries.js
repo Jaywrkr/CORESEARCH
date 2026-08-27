@@ -478,9 +478,20 @@ export async function horasPorPersonal(nombre, desde, hasta) {
 // 9-10: tickets_abiertos / tickets_vencidos
 // -----------------------------------------------------------------------
 
-const ESTADOS_CERRADOS = ["cerrado", "cerrada", "finalizado", "finalizada", "resuelto", "resuelta"];
+const ESTADOS_CERRADOS = [
+  "cerrado",
+  "cerrada",
+  "finalizado",
+  "finalizada",
+  "resuelto",
+  "resuelta",
+  "cumplido",
+  "cumplida",
+];
 
-export async function ticketsAbiertos(cliente) {
+const MAX_FILAS_TICKETS = 50;
+
+export async function ticketsAbiertos(cliente, limite = MAX_FILAS_TICKETS) {
   const relations = loadRelations();
   const check = requireTableConfig(relations, "tickets_planificacion", [
     "cliente",
@@ -498,10 +509,15 @@ export async function ticketsAbiertos(cliente) {
     if (variantes && !matchesAny(r.cliente, variantes)) return false;
     return true;
   });
-  return { disponible: true, total: abiertos.length, filas: abiertos };
+  return {
+    disponible: true,
+    total: abiertos.length,
+    devueltos: Math.min(abiertos.length, limite),
+    filas: abiertos.slice(0, limite),
+  };
 }
 
-export async function ticketsVencidos(dias = 7) {
+export async function ticketsVencidos(dias = 7, limite = MAX_FILAS_TICKETS) {
   const relations = loadRelations();
   const check = requireTableConfig(relations, "tickets_planificacion", [
     "cliente",
@@ -518,7 +534,13 @@ export async function ticketsVencidos(dias = 7) {
     const edad = daysAgo(r.fechaCreacion);
     return edad !== null && edad > dias;
   });
-  return { disponible: true, diasUmbral: dias, total: vencidos.length, filas: vencidos };
+  return {
+    disponible: true,
+    diasUmbral: dias,
+    total: vencidos.length,
+    devueltos: Math.min(vencidos.length, limite),
+    filas: vencidos.slice(0, limite),
+  };
 }
 
 // -----------------------------------------------------------------------
