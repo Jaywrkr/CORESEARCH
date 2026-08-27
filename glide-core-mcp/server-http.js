@@ -23,9 +23,20 @@ app.get("/", (_req, res) => {
   res.status(200).json({ status: "ok", server: "glide-core-mcp" });
 });
 
-app.post("/mcp", async (req, res) => {
+function extractToken(req) {
   const authHeader = req.headers.authorization ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (authHeader.startsWith("Bearer ")) return authHeader.slice(7);
+  // Fallback por query param: algunos clientes de "custom connector" (ej. el
+  // formulario de Claude) solo dejan cargar una URL, sin campo de header
+  // manual y sin soportar auth simple por token — solo OAuth Client ID/Secret,
+  // que este servidor no implementa. Como paliativo, se acepta el token como
+  // ?token=... en la URL, para poder pegarlo directo en ese campo.
+  if (typeof req.query.token === "string") return req.query.token;
+  return null;
+}
+
+app.post("/mcp", async (req, res) => {
+  const token = extractToken(req);
 
   if (token !== MCP_SERVER_TOKEN) {
     res.status(401).json({
