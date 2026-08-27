@@ -248,8 +248,9 @@ export function registerTools(server) {
     {
       title: "Obtener resumen de un cliente",
       description:
-        "Trae los proyectos de un cliente, sus contactos asociados, sus tickets y su fila cruda en " +
-        "CLIENTES GENERAL, cruzando tablas por nombre de cliente (resolviendo alias conocidos).",
+        "Trae los proyectos de un cliente, sus contactos asociados, sus tickets, y sus oportunidades " +
+        "públicas (licitaciones) con contadores por estado (ganadas/perdidas/trabajando/desiertas), " +
+        "cruzando tablas por nombre de cliente (resolviendo alias conocidos).",
       inputSchema: {
         cliente: z.string().describe("Nombre o substring del cliente a buscar."),
       },

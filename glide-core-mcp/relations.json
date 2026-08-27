@@ -124,9 +124,45 @@
       "tableId": "native-table-LsbtHKUpqvBfucxJtuLO",
       "nombre": "Compras Publicas Planificacion",
       "claves": {
-        "nroProyecto": "Nombre Proyecto"
+        "cliente": "Name",
+        "objeto": "7bsdp",
+        "fechaPublicacion": "U3c5e",
+        "fechaCierre": "lmcBy",
+        "fechaResultado": "woODw",
+        "estadoOportunidad": "yLumQ"
       },
-      "notas": "Relacion probable, no confirmada con datos reales aun."
+      "notas": "CORREGIDO 2026-08-27: no tiene columna Nro Proyecto (el supuesto anterior era erroneo), es un tracker de licitaciones/oportunidades publicas por CLIENTE, no por proyecto. estadoOportunidad viene como texto 'N - ESTADO' (ej. '1 - TRABAJANDO', '2 - GANADO', '4 - PERDIDO', '5 - DESIERTO'). Esta es la fuente real de los contadores de oportunidades ganadas/perdidas/detectadas para obtener_cliente_resumen."
+    },
+    "horas_soporte_gestion": {
+      "tableId": "native-table-LMsOjeWMaiSwMIKsfgsH",
+      "nombre": "HorasSoporte Gestion",
+      "claves": {
+        "nroProyecto": "remote\u001dcolumn1",
+        "cliente": "remote\u001dcolumn2",
+        "descripcion": "remote\u001dADMINISTRACIÓN",
+        "horas": "remote\u001dcolumn4",
+        "fecha": "remote\u001dcolumn5",
+        "personal": "remote\u001dcolumn6",
+        "fase": "remote\u001dcolumn7",
+        "codigoTicket": "remote\u001dCódigo:FO-AD-03",
+        "campo9": "remote\u001dcolumn9",
+        "flag10": "remote\u001dcolumn10",
+        "archivoUrl": "remote\u001dcolumn12"
+      },
+      "notas": "Confirmado con datos reales 2026-08-27. column1 = Codigo Proyecto (coincide con Nro Proyecto de otras tablas). personal usa nombre corto igual que Actividades/Cronograma. campo9 y flag10 sin significado confirmado todavia."
+    },
+    "servicios_gestion": {
+      "tableId": "native-table-66H8BL54fLCREZu4cx4m",
+      "nombre": "Servicios Gestion",
+      "claves": {
+        "nroProyecto": "remote\u001dcolumn1",
+        "cliente": "remote\u001dcolumn2",
+        "descripcion": "remote\u001dADMINISTRACIÓN",
+        "cantidad": "remote\u001dcolumn4",
+        "categoria": "remote\u001dcolumn5",
+        "estatus": "remote\u001dCódigo:FO-AD-03"
+      },
+      "notas": "Confirmado con datos reales 2026-08-27. column1 = Codigo Proyecto. categoria trae valores tipo '*Firewall', '*Multiplataforma' (posible referencia a las tablas *HARDWARE/*SOFTWARE, no confirmado). estatus visto: 'CUMPLIDO'. Tiene filas basura (headers de version capturados como fila, ej. columna estatus = 'Version: 01') igual que Proyectos Planificacion."
     },
     "control_ordenes_compra_track": {
       "tableId": "native-table-5ovM2HsnWlStMFGLx0A0",
@@ -200,9 +236,8 @@
   },
 
   "pendientes_por_confirmar": [
-    "HorasSoporte Gestion (native-table-LMsOjeWMaiSwMIKsfgsH) - columnas genericas, falta ver filas reales",
-    "Servicios Gestion (native-table-66H8BL54fLCREZu4cx4m) - columnas genericas, falta ver filas reales",
-    "Compras Publicas Planificacion - relacion con Nro Proyecto no confirmada con datos reales",
-    "x - Clientes Planificacion / x - Personal Planificacion - parecen ser vistas duplicadas de CLIENTES GENERAL y PERSONAL GENERAL, confirmar si son la misma tabla fisica antes de tratarlas como fuente separada"
+    "x - Clientes Planificacion (native-table-snSiRZBOaRZsAZYgohdc, SIN 'A') y x - Personal Planificacion (native-table-PuueJIao2lO4tlAYYqHa, SIN 'A') - CONFIRMADO 2026-08-27 que son tablas FISICAS DISTINTAS de CLIENTES GENERAL / PERSONAL GENERAL (mismo id base pero sin el sufijo ' A' que si tienen las generales) - no un error de copiado como se sospechaba antes. Falta confirmar cual de las dos es la autoritativa/actualizada antes de usar las 'x -' como fuente alternativa.",
+    "campo9 y flag10 de horas_soporte_gestion - valores vistos (3, 2, 'SI'/'NO') sin significado de negocio confirmado.",
+    "categoria de servicios_gestion - valores tipo '*Firewall' podrian referenciar las tablas *HARDWARE/*SOFTWARE/*ESTADOS, no confirmado con join real."
   ]
 }

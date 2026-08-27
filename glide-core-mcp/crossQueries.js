@@ -286,18 +286,32 @@ export async function obtenerClienteResumen(cliente) {
     resultado.secciones.tickets = { disponible: true, filas: rows.filter((r) => matchesAny(r.cliente, variantes)) };
   }
 
-  const maestroCheck = requireTableConfig(relations, "clientes_general", ["cliente"]);
-  if (!maestroCheck.ok) {
-    resultado.secciones.maestro = { disponible: false, motivo: maestroCheck.error };
+  const oportunidadesCheck = requireTableConfig(relations, "compras_publicas_planificacion", [
+    "cliente",
+    "objeto",
+    "estadoOportunidad",
+    "fechaResultado",
+  ]);
+  if (!oportunidadesCheck.ok) {
+    resultado.secciones.oportunidades = { disponible: false, motivo: oportunidadesCheck.error };
   } else {
-    const rows = await rawTable(maestroCheck.cfg.tableId).get();
-    const key = maestroCheck.cfg.claves.cliente;
-    resultado.secciones.maestro = {
+    const rows = await fetchMapped(oportunidadesCheck.cfg, [
+      "cliente",
+      "objeto",
+      "estadoOportunidad",
+      "fechaResultado",
+    ]);
+    const propias = rows.filter((r) => matchesAny(r.cliente, variantes));
+    const contadores = {};
+    for (const r of propias) {
+      const estado = r.estadoOportunidad ?? "sin estado";
+      contadores[estado] = (contadores[estado] ?? 0) + 1;
+    }
+    resultado.secciones.oportunidades = {
       disponible: true,
-      notas:
-        "Filas crudas sin transformar (no hay mapeo de columnas de oportunidades ganadas/perdidas/" +
-        "detectadas todavía en relations.json) — revisar campos disponibles acá mismo.",
-      filas: rows.filter((r) => matchesAny(r[key], variantes)),
+      notas: "Licitaciones/oportunidades públicas por cliente (tabla Compras Publicas Planificacion).",
+      contadoresPorEstado: contadores,
+      filas: propias,
     };
   }
 
