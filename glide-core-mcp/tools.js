@@ -234,8 +234,9 @@ export function registerTools(server) {
       title: "Obtener toda la info de un proyecto cruzando tablas",
       description:
         "Trae en un solo llamado todo lo relacionado a un proyecto: datos base (Proyectos " +
-        "Planificacion), actividades, cronograma, equipos asignados, el registro paralelo en " +
-        "Proyectos Gestion, y tickets (join aproximado por cliente) + horas totales.",
+        "Planificacion), actividades, cronograma, equipos asignados, datos de contrato (Proyectos " +
+        "Gestion: nro. contrato, fechas, plazo, monto, forma de pago, administrador), órdenes de " +
+        "compra (join por OPI), y tickets (join aproximado por cliente) + horas totales.",
       inputSchema: {
         nro_proyecto: z.string().describe("Código del proyecto a buscar (ej. codigoProyecto)."),
       },

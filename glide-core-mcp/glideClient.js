@@ -36,6 +36,7 @@ export const projectsTable = glide.table({
     estado: { type: "string", name: "remoteCódigo:FO-ST-02" },
     fechaRevisado: { type: "date-time", name: "SowWf" },
     liderProyecto: { type: "string", name: "Jv4eD" },
+    opi: { type: "string", name: "KnAEf" },
   },
 });
 

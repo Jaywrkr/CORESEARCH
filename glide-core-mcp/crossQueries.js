@@ -195,7 +195,24 @@ export async function obtenerProyectoCompleto(nroProyecto) {
     ["actividades_planificacion", "actividades", ["personal", "fecha", "horas"]],
     ["cronograma_planificacion", "cronograma", ["personal", "fechaCreacion", "fechaTrabajo", "estatus"]],
     ["equipos_proyecto", "equiposAsignados", []],
-    ["proyectos_gestion", "gestion", ["cliente", "descripcion", "monto", "estatus", "fechaActa"]],
+    [
+      "proyectos_gestion",
+      "gestion",
+      [
+        "cliente",
+        "descripcion",
+        "nroContrato",
+        "referenciaOpi",
+        "fechaPrincipal",
+        "fechaSecundaria",
+        "plazoDias",
+        "fechaActa",
+        "monto",
+        "estatus",
+        "formaPago",
+        "administrador",
+      ],
+    ],
   ]) {
     const check = requireTableConfig(relations, tableKey, ["nroProyecto", ...camposExtra]);
     if (!check.ok) {
@@ -229,6 +246,24 @@ export async function obtenerProyectoCompleto(nroProyecto) {
       disponible: true,
       notas: "Join aproximado por cliente del proyecto (Tickets no referencia Nro Proyecto directamente).",
       filas: rows.filter((r) => matchesAny(r.cliente, variantesCliente)),
+    };
+  }
+
+  // Órdenes de compra se vinculan por OPI (no por Nro Proyecto).
+  const ordenesCheck = requireTableConfig(relations, "control_ordenes_compra_track", ["opi", "cliente", "personal"]);
+  if (!ordenesCheck.ok) {
+    resultado.secciones.ordenesCompra = { disponible: false, motivo: ordenesCheck.error };
+  } else if (!proyecto?.opi) {
+    resultado.secciones.ordenesCompra = {
+      disponible: false,
+      motivo: "El proyecto no tiene OPI cargado (o no se encontró el proyecto), y las órdenes de compra se vinculan por OPI.",
+    };
+  } else {
+    const rows = await fetchMapped(ordenesCheck.cfg, ["opi", "cliente", "personal"]);
+    resultado.secciones.ordenesCompra = {
+      disponible: true,
+      opi: proyecto.opi,
+      filas: rows.filter((r) => includesCI(r.opi, proyecto.opi)),
     };
   }
 
