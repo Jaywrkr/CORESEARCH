@@ -39,16 +39,16 @@ export function registerTools(server) {
       title: "Buscar proyectos de Coresolutions",
       description:
         "Busca proyectos de Coresolutions en la tabla de Glide, filtrando por servicio/tecnología " +
-        "(campo 'gestion') y/o por estado, ordenados por fecha de creación descendente.",
+        "y/o por estado, ordenados por fecha de creación descendente.",
       inputSchema: {
         servicio: z
           .string()
           .optional()
           .describe(
-            "Filtro de texto por substring, case-insensitive, sobre el servicio/tecnología. Busca " +
-              "tanto en el campo 'gestion' como en el nombre/cliente del proyecto (donde suele " +
-              "aparecer la tecnología, ej. 'MUTUALISTA PICHINCHA - SERVICIOS VMWARE'). Ej: 'vmware' " +
-              "matchea 'VMware' y 'VMware vSAN'."
+            "Filtro de texto por substring, case-insensitive, sobre el servicio/tecnología. La " +
+              "tabla no tiene una columna dedicada a esto: se busca en el nombre/cliente del " +
+              "proyecto, que es donde en la práctica aparece la tecnología (ej. 'MUTUALISTA " +
+              "PICHINCHA - SERVICIOS VMWARE'). Ej: 'vmware' matchea 'VMware' y 'VMware vSAN'."
           ),
         estado: z
           .string()
@@ -72,11 +72,7 @@ export function registerTools(server) {
 
       if (servicio) {
         const needle = servicio.toLowerCase();
-        filtered = filtered.filter((row) => {
-          const gestion = (row.gestion ?? "").toLowerCase();
-          const cliente = (row.clienteProyecto ?? "").toLowerCase();
-          return gestion.includes(needle) || cliente.includes(needle);
-        });
+        filtered = filtered.filter((row) => (row.clienteProyecto ?? "").toLowerCase().includes(needle));
       }
 
       if (estado) {
@@ -93,7 +89,7 @@ export function registerTools(server) {
       const results = filtered.slice(0, limit).map((row) => ({
         codigo: row.codigoProyecto ?? null,
         cliente: row.clienteProyecto ?? null,
-        servicio: row.gestion ?? null,
+        gestionDeProyecto: row.gestion ?? null,
         estado: row.estado ?? null,
         fechaCreacion: row.fechaCreacion ?? null,
         fechaPlanificada: row.fechaPlanificada ?? null,

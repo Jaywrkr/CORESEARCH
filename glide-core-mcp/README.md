@@ -67,8 +67,8 @@ Primeras 3 filas (verificá que los campos no salgan undefined):
 
 {
   codigoProyecto: 'PRJ-0231',
-  clienteProyecto: 'Banco XYZ',
-  gestion: 'VMware',
+  clienteProyecto: 'Banco XYZ - Implementación VMware',
+  gestion: 'Si',
   estado: 'En curso',
   fechaCreacion: '2026-08-01T12:00:00.000Z',
   ...
@@ -133,9 +133,12 @@ Notas:
 
 ## La tool `buscar_proyectos`
 
-- **servicio** (string, opcional): filtro por substring, case-insensitive. Busca
-  tanto en `gestion` como en `clienteProyecto` (la tecnología suele aparecer en el
-  nombre del proyecto, ej. `"MUTUALISTA PICHINCHA - SERVICIOS VMWARE"`).
+- **servicio** (string, opcional): filtro por substring, case-insensitive, sobre
+  `clienteProyecto` (la tabla no tiene columna dedicada a tecnología — en la
+  práctica aparece en el nombre del proyecto, ej.
+  `"MUTUALISTA PICHINCHA - SERVICIOS VMWARE"`). El campo `gestion` es otra cosa:
+  indica si el proyecto se maneja con gestión formal de proyectos o como proyecto
+  simple (Si/No), se devuelve como `gestionDeProyecto` pero no se usa para filtrar.
 - **estado** (string, opcional): filtro exacto, case-insensitive, sobre `estado`.
 - **limite** (number, opcional, default 10, máx 50): cantidad de resultados.
 
