@@ -37,6 +37,17 @@ export const projectsTable = glide.table({
     fechaRevisado: { type: "date-time", name: "SowWf" },
     liderProyecto: { type: "string", name: "Jv4eD" },
     opi: { type: "string", name: "KnAEf" },
+    detalleOpi: { type: "image-uri", name: "remotecolumn23" },
+    archivo1: { type: "string", name: "remotecolumn24" },
+    archivo2: { type: "string", name: "remotecolumn25" },
+    archivo3: { type: "string", name: "remotecolumn26" },
+    archivo4: { type: "string", name: "remotecolumn27" },
+    archivo5: { type: "string", name: "remotecolumn28" },
+    archivo6: { type: "string", name: "remotecolumn29" },
+    archivo7: { type: "string", name: "remotecolumn30" },
+    archivo8: { type: "string", name: "remotecolumn31" },
+    archivo9: { type: "string", name: "remotecolumn32" },
+    archivo10: { type: "string", name: "remotecolumn33" },
   },
 });
 

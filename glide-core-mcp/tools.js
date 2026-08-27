@@ -17,6 +17,7 @@ import {
   certificacionesPorVencer,
   proyectosSinActualizar,
   detectarCodigosDuplicados,
+  extraerDocumentosProyecto,
   esFilaBasura,
 } from "./crossQueries.js";
 
@@ -378,5 +379,22 @@ export function registerTools(server) {
       inputSchema: {},
     },
     async () => jsonResult(await detectarCodigosDuplicados())
+  );
+
+  server.registerTool(
+    "extraer_documentos_proyecto",
+    {
+      title: "Extraer texto de los PDFs adjuntos a un proyecto",
+      description:
+        "Dado un código de proyecto, baja los PDFs adjuntos (actas de entrega, certificados de " +
+        "participación, etc. — hasta 10 archivos por proyecto) y extrae su texto plano, para poder " +
+        "buscar dentro de ellos cosas como monto, tecnología, o cualquier dato que no esté en una " +
+        "columna de Glide. Cada documento viene con su texto truncado a 8000 caracteres. Puede " +
+        "tardar varios segundos si hay muchos archivos adjuntos.",
+      inputSchema: {
+        nro_proyecto: z.string().describe("Código del proyecto (codigoProyecto)."),
+      },
+    },
+    async ({ nro_proyecto }) => jsonResult(await extraerDocumentosProyecto(nro_proyecto))
   );
 }

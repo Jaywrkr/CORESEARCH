@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { PDFParse } from "pdf-parse";
 import { rawTable, glideApp, projectsTable } from "./glideClient.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -623,4 +624,55 @@ export async function detectarCodigosDuplicados() {
     .map((filas) => ({ codigo: filas[0].codigo, ocurrencias: filas.length, filas }));
 
   return { totalCodigosDuplicados: duplicados.length, duplicados };
+}
+
+// -----------------------------------------------------------------------
+// 14: extraer_documentos_proyecto
+// -----------------------------------------------------------------------
+
+const CAMPOS_ARCHIVO = [
+  "archivo1", "archivo2", "archivo3", "archivo4", "archivo5",
+  "archivo6", "archivo7", "archivo8", "archivo9", "archivo10",
+];
+const MAX_CARACTERES_POR_DOCUMENTO = 8000;
+
+async function extraerTextoPdf(url) {
+  const parser = new PDFParse({ url });
+  try {
+    const resultado = await parser.getText();
+    return { textoExtraido: resultado.text.slice(0, MAX_CARACTERES_POR_DOCUMENTO), truncado: resultado.text.length > MAX_CARACTERES_POR_DOCUMENTO };
+  } finally {
+    await parser.destroy();
+  }
+}
+
+export async function extraerDocumentosProyecto(nroProyecto) {
+  const proyectos = await projectsTable.get();
+  const proyecto = proyectos.find(
+    (p) => (p.codigoProyecto ?? "").toLowerCase() === nroProyecto.toLowerCase()
+  );
+
+  if (!proyecto) {
+    return { nroProyecto, disponible: false, motivo: `No se encontró un proyecto con codigoProyecto exactamente "${nroProyecto}".` };
+  }
+
+  const urls = CAMPOS_ARCHIVO
+    .map((campo) => ({ campo, url: proyecto[campo] }))
+    .filter(({ url }) => typeof url === "string" && url.trim().length > 0);
+
+  if (urls.length === 0) {
+    return { nroProyecto, disponible: true, documentosEncontrados: 0, documentos: [] };
+  }
+
+  const documentos = [];
+  for (const { campo, url } of urls) {
+    try {
+      const { textoExtraido, truncado } = await extraerTextoPdf(url);
+      documentos.push({ campo, url, disponible: true, textoExtraido, truncado });
+    } catch (err) {
+      documentos.push({ campo, url, disponible: false, error: String(err?.message ?? err) });
+    }
+  }
+
+  return { nroProyecto, disponible: true, documentosEncontrados: documentos.length, documentos };
 }

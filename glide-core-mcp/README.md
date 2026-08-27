@@ -246,6 +246,16 @@ algo, devuelven un mensaje explicando exactamente qué completar:
 - **`detectar_codigos_duplicados`** — sin parámetros. Agrupa proyectos por
   `codigoProyecto` y devuelve los que aparecen más de una vez (con cliente y
   estado de cada ocurrencia), para pescar reuso accidental de un mismo código.
+- **`extraer_documentos_proyecto`** — `nro_proyecto`. Baja los PDFs adjuntos al
+  proyecto (actas de entrega, certificados de participación — hasta 10 archivos,
+  columnas `archivo1`...`archivo10`) y extrae su texto plano (usa `pdf-parse`),
+  para poder buscar dentro de ellos datos que no están en ninguna columna de
+  Glide (ej. monto de un contrato, tecnología mencionada). El texto de cada
+  documento viene truncado a 8000 caracteres. Por ahora es **por proyecto
+  puntual** — buscar por monto/tecnología a través de *todos* los proyectos a
+  la vez requeriría indexar todos los PDFs de antemano (bajarlos y extraerlos
+  en un job aparte, no en cada consulta), que queda como próximo paso si esto
+  resulta útil.
 
 Todas estas ya deberían estar activas con los datos reales cargados en
 `relations.json` — si alguna responde "disponible: false", el mensaje indica
