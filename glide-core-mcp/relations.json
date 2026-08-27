@@ -74,9 +74,17 @@
       "tableId": "native-table-snSiRZBOaRZsAZYgohdc A",
       "nombre": "CLIENTES GENERAL",
       "claves": {
-        "cliente": "Name"
+        "cliente": "Name",
+        "categoria": "mX8I4",
+        "nroProyectos": "eqv8Q",
+        "nroOportunidades": "aSZa0",
+        "oportunidadesGanadas": "eAwAZ",
+        "oportunidadesPerdidas": "Cxfjh",
+        "oportunidadesDetectadas": "huJaL",
+        "proyectosEnCurso": "TAg0r",
+        "proyectosTerminados": "I4WzH"
       },
-      "notas": "Clave maestra de cliente. Puede tener alias en columna 'Name 2' (id 9VHEq) que no siempre coincide con el texto libre usado en otras tablas."
+      "notas": "CONFIRMADO 2026-08-27 con inspeccionar_tabla: tiene contadores YA PRECALCULADOS por Glide (rollups), no hace falta calcularlos cruzando otras tablas. Es la fuente correcta para 'contadores de oportunidades ganadas/perdidas/detectadas' del spec original. Puede tener alias en columna 'Name 2' (id 9VHEq), 'Name 3' (OVqHJ), 'Name 4' (7jf66), 'Name 5' (jOidA) que no siempre coinciden con el texto libre usado en otras tablas."
     },
     "capacitaciones_planificacion": {
       "tableId": "native-table-jQNnvf4AfL3FtG5iUDeG",

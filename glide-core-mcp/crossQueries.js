@@ -286,6 +286,40 @@ export async function obtenerClienteResumen(cliente) {
     resultado.secciones.tickets = { disponible: true, filas: rows.filter((r) => matchesAny(r.cliente, variantes)) };
   }
 
+  // Contadores precalculados por Glide (rollups) — fuente principal.
+  const contadoresCheck = requireTableConfig(relations, "clientes_general", [
+    "cliente",
+    "categoria",
+    "nroProyectos",
+    "nroOportunidades",
+    "oportunidadesGanadas",
+    "oportunidadesPerdidas",
+    "oportunidadesDetectadas",
+    "proyectosEnCurso",
+    "proyectosTerminados",
+  ]);
+  if (!contadoresCheck.ok) {
+    resultado.secciones.contadores = { disponible: false, motivo: contadoresCheck.error };
+  } else {
+    const rows = await fetchMapped(contadoresCheck.cfg, [
+      "cliente",
+      "categoria",
+      "nroProyectos",
+      "nroOportunidades",
+      "oportunidadesGanadas",
+      "oportunidadesPerdidas",
+      "oportunidadesDetectadas",
+      "proyectosEnCurso",
+      "proyectosTerminados",
+    ]);
+    const fila = rows.find((r) => matchesAny(r.cliente, variantes));
+    resultado.secciones.contadores = fila
+      ? { disponible: true, notas: "Contadores precalculados por Glide en CLIENTES GENERAL.", ...fila }
+      : { disponible: false, motivo: `No se encontró "${cliente}" en CLIENTES GENERAL.` };
+  }
+
+  // Detalle de licitaciones/oportunidades públicas individuales (complementa
+  // los contadores de arriba con el listado concreto).
   const oportunidadesCheck = requireTableConfig(relations, "compras_publicas_planificacion", [
     "cliente",
     "objeto",
@@ -293,7 +327,7 @@ export async function obtenerClienteResumen(cliente) {
     "fechaResultado",
   ]);
   if (!oportunidadesCheck.ok) {
-    resultado.secciones.oportunidades = { disponible: false, motivo: oportunidadesCheck.error };
+    resultado.secciones.oportunidadesDetalle = { disponible: false, motivo: oportunidadesCheck.error };
   } else {
     const rows = await fetchMapped(oportunidadesCheck.cfg, [
       "cliente",
@@ -301,17 +335,10 @@ export async function obtenerClienteResumen(cliente) {
       "estadoOportunidad",
       "fechaResultado",
     ]);
-    const propias = rows.filter((r) => matchesAny(r.cliente, variantes));
-    const contadores = {};
-    for (const r of propias) {
-      const estado = r.estadoOportunidad ?? "sin estado";
-      contadores[estado] = (contadores[estado] ?? 0) + 1;
-    }
-    resultado.secciones.oportunidades = {
+    resultado.secciones.oportunidadesDetalle = {
       disponible: true,
-      notas: "Licitaciones/oportunidades públicas por cliente (tabla Compras Publicas Planificacion).",
-      contadoresPorEstado: contadores,
-      filas: propias,
+      notas: "Licitaciones/oportunidades públicas individuales (tabla Compras Publicas Planificacion).",
+      filas: rows.filter((r) => matchesAny(r.cliente, variantes)),
     };
   }
 
