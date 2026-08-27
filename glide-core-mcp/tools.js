@@ -386,11 +386,12 @@ export function registerTools(server) {
     {
       title: "Extraer texto de los PDFs adjuntos a un proyecto",
       description:
-        "Dado un código de proyecto, baja los PDFs adjuntos (actas de entrega, certificados de " +
-        "participación, etc. — hasta 10 archivos por proyecto) y extrae su texto plano, para poder " +
-        "buscar dentro de ellos cosas como monto, tecnología, o cualquier dato que no esté en una " +
-        "columna de Glide. Cada documento viene con su texto truncado a 8000 caracteres. Puede " +
-        "tardar varios segundos si hay muchos archivos adjuntos.",
+        "Dado un código de proyecto, escanea TODAS las columnas de su fila (no solo un campo fijo, " +
+        "porque los adjuntos viven en columnas dinámicas que varían) buscando URLs de PDF (actas de " +
+        "entrega, certificados de participación, etc.), los baja y extrae su texto plano — para " +
+        "poder buscar dentro de ellos cosas como monto o tecnología que no estén en una columna de " +
+        "Glide. Cada documento viene con su texto truncado a 8000 caracteres. Puede tardar varios " +
+        "segundos si hay muchos archivos adjuntos.",
       inputSchema: {
         nro_proyecto: z.string().describe("Código del proyecto (codigoProyecto)."),
       },

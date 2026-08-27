@@ -37,19 +37,15 @@ export const projectsTable = glide.table({
     fechaRevisado: { type: "date-time", name: "SowWf" },
     liderProyecto: { type: "string", name: "Jv4eD" },
     opi: { type: "string", name: "KnAEf" },
-    detalleOpi: { type: "image-uri", name: "remotecolumn23" },
-    archivo1: { type: "string", name: "remotecolumn24" },
-    archivo2: { type: "string", name: "remotecolumn25" },
-    archivo3: { type: "string", name: "remotecolumn26" },
-    archivo4: { type: "string", name: "remotecolumn27" },
-    archivo5: { type: "string", name: "remotecolumn28" },
-    archivo6: { type: "string", name: "remotecolumn29" },
-    archivo7: { type: "string", name: "remotecolumn30" },
-    archivo8: { type: "string", name: "remotecolumn31" },
-    archivo9: { type: "string", name: "remotecolumn32" },
-    archivo10: { type: "string", name: "remotecolumn33" },
   },
 });
+
+// Id de la tabla de Proyectos Planificacion, para usar con rawTable() cuando
+// hace falta leer columnas que no están en el mapeo tipado de arriba (ej.
+// columnas de archivos adjuntos, que en la práctica no son "Archivo 1"..
+// "Archivo 10" sino columnas dinámicas tipo "Sz7LZ"/"SJCXp" con arrays de
+// URLs, que ni siquiera aparecen en el schema oficial de la tabla).
+export const PROJECTS_TABLE_ID = GLIDE_TABLE_ID;
 
 // App de Glide, usada para explorar tablas y columnas (listar_tablas /
 // inspeccionar_tabla) sin tener que abrir el modal "Show API" a mano.

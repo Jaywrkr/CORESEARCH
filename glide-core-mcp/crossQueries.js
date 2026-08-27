@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { PDFParse } from "pdf-parse";
-import { rawTable, glideApp, projectsTable } from "./glideClient.js";
+import { rawTable, glideApp, projectsTable, PROJECTS_TABLE_ID } from "./glideClient.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const relationsPath = join(__dirname, "relations.json");
@@ -630,11 +630,33 @@ export async function detectarCodigosDuplicados() {
 // 14: extraer_documentos_proyecto
 // -----------------------------------------------------------------------
 
-const CAMPOS_ARCHIVO = [
-  "archivo1", "archivo2", "archivo3", "archivo4", "archivo5",
-  "archivo6", "archivo7", "archivo8", "archivo9", "archivo10",
-];
 const MAX_CARACTERES_POR_DOCUMENTO = 8000;
+
+function esUrlPdf(valor) {
+  return typeof valor === "string" && valor.toLowerCase().includes(".pdf");
+}
+
+/**
+ * Recorre TODOS los valores de una fila cruda buscando URLs de PDF, sin
+ * depender de nombres de columna fijos. En la práctica, los adjuntos de
+ * Proyectos Planificacion no viven en columnas "Archivo 1".."Archivo 10"
+ * (esas están vacías) sino en columnas dinámicas (ej. "Sz7LZ", "SJCXp")
+ * que ni siquiera aparecen en el schema oficial de la tabla — cada una
+ * suele contener un array con la(s) URL(s) de ese tipo de documento.
+ */
+function extraerUrlsPdf(row) {
+  const urls = [];
+  for (const [campo, valor] of Object.entries(row ?? {})) {
+    if (esUrlPdf(valor)) {
+      urls.push({ campo, url: valor });
+    } else if (Array.isArray(valor)) {
+      for (const item of valor) {
+        if (esUrlPdf(item)) urls.push({ campo, url: item });
+      }
+    }
+  }
+  return urls;
+}
 
 async function extraerTextoPdf(url) {
   const parser = new PDFParse({ url });
@@ -647,18 +669,18 @@ async function extraerTextoPdf(url) {
 }
 
 export async function extraerDocumentosProyecto(nroProyecto) {
-  const proyectos = await projectsTable.get();
-  const proyecto = proyectos.find(
-    (p) => (p.codigoProyecto ?? "").toLowerCase() === nroProyecto.toLowerCase()
+  const rawRows = await rawTable(PROJECTS_TABLE_ID).get();
+  const rawRow = rawRows.find((row) =>
+    Object.values(row).some(
+      (v) => typeof v === "string" && v.trim().toLowerCase() === nroProyecto.toLowerCase()
+    )
   );
 
-  if (!proyecto) {
+  if (!rawRow) {
     return { nroProyecto, disponible: false, motivo: `No se encontró un proyecto con codigoProyecto exactamente "${nroProyecto}".` };
   }
 
-  const urls = CAMPOS_ARCHIVO
-    .map((campo) => ({ campo, url: proyecto[campo] }))
-    .filter(({ url }) => typeof url === "string" && url.trim().length > 0);
+  const urls = extraerUrlsPdf(rawRow);
 
   if (urls.length === 0) {
     return { nroProyecto, disponible: true, documentosEncontrados: 0, documentos: [] };
