@@ -27,12 +27,13 @@ nombres de columna en Glide.
   - `column8` = plazo en días
   - `column12` = monto del contrato
   - `column13` = estado de facturación
-- **x - Clientes Planificacion** y **x - Personal Planificacion** parecen ser la misma tabla física que CLIENTES GENERAL y PERSONAL GENERAL respectivamente (mismos IDs de columna internos). Confirmar antes de tratarlas como fuente de datos separada — podrían ser solo vistas con menos columnas visibles.
+- **x - Clientes Planificacion** y **x - Personal Planificacion** son tablas FÍSICAMENTE DISTINTAS de CLIENTES GENERAL y PERSONAL GENERAL (confirmado con `listar_tablas`: mismo id base pero sin el sufijo " A" que sí tienen las generales). No es un error de copiado. Falta confirmar cuál de las dos es la autoritativa antes de usarlas como fuente alternativa.
+- **CLIENTES GENERAL** trae contadores YA PRECALCULADOS por Glide por cliente: `Nro Proyectos`, `Nro Oportunidades`, `Contador Oportunidad Ganada/Perdida/Detectada`, `Nro Proyectos En Curso/Terminados` — no hace falta recalcularlos cruzando otras tablas.
+- **Compras Publicas Planificacion** NO se vincula por Nro Proyecto (ese supuesto era erróneo) — es un tracker de licitaciones/oportunidades públicas por CLIENTE, con estado tipo `"2 - GANADO"` / `"4 - PERDIDO"` / `"5 - DESIERTO"` / `"1 - TRABAJANDO"`.
 
 ## Por confirmar (no verificado con datos reales todavía)
 
-- `HorasSoporte Gestion` y `Servicios Gestion` — mismo patrón de columnas genéricas que Proyectos Gestion, pero no se les corrió `obtener_filas` aún.
-- `Compras Publicas Planificacion` — se asume que `Nombre Proyecto` conecta con Nro Proyecto, pero no está confirmado con filas reales.
+- `HorasSoporte Gestion` y `Servicios Gestion` — ya mapeadas en `relations.json` con datos reales (2026-08-27); falta confirmar el significado exacto de un par de campos genéricos (`campo9`/`flag10` en HorasSoporte, `categoria` en Servicios).
 
 ## Cómo usar esto en el servidor
 

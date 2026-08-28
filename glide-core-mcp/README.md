@@ -246,10 +246,11 @@ algo, devuelven un mensaje explicando exactamente qué completar:
 - **`detectar_codigos_duplicados`** — sin parámetros. Agrupa proyectos por
   `codigoProyecto` y devuelve los que aparecen más de una vez (con cliente y
   estado de cada ocurrencia), para pescar reuso accidental de un mismo código.
-- **`extraer_documentos_proyecto`** — `nro_proyecto`. Baja los PDFs adjuntos al
-  proyecto (actas de entrega, certificados de participación — hasta 10 archivos,
-  columnas `archivo1`...`archivo10`) y extrae su texto plano (usa `pdf-parse`),
-  para poder buscar dentro de ellos datos que no están en ninguna columna de
+- **`extraer_documentos_proyecto`** — `nro_proyecto`. Escanea TODAS las columnas
+  de la fila del proyecto buscando URLs `.pdf` (los adjuntos viven en columnas
+  dinámicas como `Sz7LZ`/`SJCXp`, no en columnas fijas "Archivo 1".."Archivo 10"),
+  los baja y extrae su texto plano (usa `pdf-parse`; requiere Node ≥20.16, ver
+  `.node-version`), para poder buscar dentro de ellos datos que no están en ninguna columna de
   Glide (ej. monto de un contrato, tecnología mencionada). El texto de cada
   documento viene truncado a 8000 caracteres. Por ahora es **por proyecto
   puntual** — buscar por monto/tecnología a través de *todos* los proyectos a
